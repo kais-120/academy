@@ -1,0 +1,126 @@
+// ---------------------------------------------------------------------------
+// Dummy data — 10 maîtres (enseignants). À remplacer plus tard par
+// src/services/api.js (getTeachers, createTeacher, updateTeacher, deleteTeacher).
+// ---------------------------------------------------------------------------
+
+export const subjects = [
+  'عربية',
+  'رياضيات',
+  'إيقاظ العلمي',
+  'تربية الإسلامية',
+  'تربية المدنية',
+  'مواد الاجتماعية (تاريخ وجغرافيا)',
+  'لفرنسية',
+  'إنجليزية',
+  'تربية البدنية',
+  'تربية والفنية',
+  'Sport',
+  'Informatique',
+];
+
+export const teacherStatuses = ['نشط', 'في إجازة', 'غير نشط'];
+
+export const teachers = [
+  {
+    id: 1,
+    nom: 'Ben Ali',
+    prenom: 'Mohamed',
+    telephone: '20 456 789',
+    matiere: 'Mathématiques',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1350,
+    statut: 'Actif',
+  },
+  {
+    id: 2,
+    nom: 'Khemiri',
+    prenom: 'Leila',
+    telephone: '25 671 234',
+    matiere: 'Français',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1250,
+    statut: 'Actif',
+  },
+  {
+    id: 3,
+    nom: 'Trabelsi',
+    prenom: 'Nizar',
+    telephone: '98 342 671',
+    matiere: 'Arabe',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1200,
+    statut: 'Actif',
+  },
+  {
+    id: 4,
+    nom: 'Sassi',
+    prenom: 'Emna',
+    telephone: '52 908 476',
+    matiere: 'Anglais',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1180,
+    statut: 'En congé',
+  },
+  {
+    id: 5,
+    nom: 'Gharbi',
+    prenom: 'Walid',
+    telephone: '27 561 903',
+    matiere: 'Sciences',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1300,
+    statut: 'Actif',
+  },
+  {
+    id: 6,
+    nom: 'Mansouri',
+    prenom: 'Sonia',
+    telephone: '24 673 812',
+    matiere: 'Physique',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1400,
+    statut: 'Actif',
+  },
+  {
+    id: 7,
+    nom: 'Chebbi',
+    prenom: 'Karim',
+    telephone: '99 217 654',
+    matiere: 'Histoire-Géographie',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1150,
+    statut: 'Actif',
+  },
+  {
+    id: 8,
+    nom: 'Ferjani',
+    prenom: 'Ines',
+    telephone: '55 349 128',
+    matiere: 'Éducation Islamique',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1100,
+    statut: 'Inactif',
+  },
+  {
+    id: 9,
+    nom: 'Jlassi',
+    prenom: 'Ahmed',
+    telephone: '23 784 561',
+    matiere: 'Sport',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1050,
+    statut: 'Actif',
+  },
+  {
+    id: 10,
+    nom: 'Bouazizi',
+    prenom: 'Rania',
+    telephone: '29 456 908',
+    matiere: 'Informatique',
+    dateDepotSalaire: '2026-07-28',
+    salaire: 1380,
+    statut: 'Actif',
+  },
+];
+
+export default teachers;
