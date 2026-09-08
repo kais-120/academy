@@ -305,10 +305,10 @@ export default function Dashboard() {
               <Text fontFamily="heading" fontWeight="700" color="ink.900">معلومات المدرسة</Text>
             </HStack>
             <VStack align="stretch" spacing={3.5}>
-              <InfoRow icon={MapPin} label="العنوان" value={schoolInfo.address} />
-              <InfoRow icon={Phone} label="الهاتف" value={schoolInfo.phone} />
-              <InfoRow icon={Mail} label="البريد الإلكتروني" value={schoolInfo.email} />
-              <InfoRow icon={CalendarDays} label="السنة الدراسية" value={schoolInfo.academic_year} />
+              <InfoRow icon={MapPin} label="العنوان" value={schoolInfo?.address} />
+              <InfoRow icon={Phone} label="الهاتف" value={schoolInfo?.phone} />
+              <InfoRow icon={Mail} label="البريد الإلكتروني" value={schoolInfo?.email} />
+              <InfoRow icon={CalendarDays} label="السنة الدراسية" value={schoolInfo?.academic_year} />
             </VStack>
           </Box>
         </VStack>
@@ -319,7 +319,7 @@ export default function Dashboard() {
         <HStack justify="space-between" mb={4}>
           <Text fontFamily="heading" fontWeight="700" color="ink.900">تعريفة الدراسة</Text>
           <Badge bg="brand.50" color="brand.700" borderRadius="full" px={2.5} py={1}>
-            {schoolInfo.schoolYear}
+            {schoolInfo?.schoolYear}
           </Badge>
         </HStack>
         <TableContainer>

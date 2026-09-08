@@ -1,32 +1,31 @@
 import { extendTheme } from '@chakra-ui/react';
 
 // ---------------------------------------------------------------------------
-// Palette — pensée pour une administration scolaire : bleus institutionnels,
-// blancs et gris très clairs pour la lisibilité, une touche de vert sauge
-// pour les indicateurs positifs, et un vert-eau discret pour les accents
-// secondaires (repris du logo).
+// Palette — pensée pour une administration scolaire : vert-eau (teal/sauge)
+// comme couleur principale, bleus institutionnels en accent secondaire,
+// blancs et gris très clairs pour la lisibilité.
 // ---------------------------------------------------------------------------
 
 const colors = {
   brand: {
-    50: '#EAF1FB',
-    100: '#CEE0F6',
-    200: '#A3C6EE',
-    300: '#78ABE6',
-    400: '#4D8FDD',
-    500: '#2C6FD1', // bleu principal
-    600: '#1B4B8F', // bleu institutionnel (marque)
-    700: '#153A70',
-    800: '#102B54',
-    900: '#0B1D38',
-  },
-  accent: {
     50: '#EAF7F5',
     100: '#CDEBE7',
     200: '#9FD9D1',
-    300: '#7CC7C0', // vert-eau du logo
+    300: '#7CC7C0',
     400: '#4FADA3',
-    500: '#348B82',
+    500: '#348B82', // vert-eau principal
+    600: '#256F68', // teal institutionnel (marque)
+    700: '#1B534E',
+    800: '#123A37',
+    900: '#0A2422',
+  },
+  accent: {
+    50: '#EAF1FB',
+    100: '#CEE0F6',
+    200: '#A3C6EE',
+    300: '#78ABE6', // bleu du logo, en accent
+    400: '#4D8FDD',
+    500: '#2C6FD1',
   },
   positive: {
     50: '#EAF8EF',
@@ -94,8 +93,8 @@ const styles = {
 };
 
 const shadows = {
-  card: '0 1px 2px rgba(16, 26, 46, 0.04), 0 8px 24px -12px rgba(27, 75, 143, 0.12)',
-  cardHover: '0 4px 10px rgba(16, 26, 46, 0.06), 0 16px 32px -14px rgba(27, 75, 143, 0.18)',
+  card: '0 1px 2px rgba(16, 26, 46, 0.04), 0 8px 24px -12px rgba(37, 111, 104, 0.14)',
+  cardHover: '0 4px 10px rgba(16, 26, 46, 0.06), 0 16px 32px -14px rgba(37, 111, 104, 0.20)',
   popover: '0 12px 32px -8px rgba(16, 26, 46, 0.22)',
 };
 

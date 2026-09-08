@@ -29,6 +29,7 @@ import SchoolLoadingPage from './components/common/SchoolLoadingPage';
 import DirectorRoute from './protect/DirectorRoute';
 import AdminProfile from './pages/AdminProfile';
 import ActivityLogs from './pages/ActivityLogs';
+import PackagesPage from './pages/PackagesPage';
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/activity-logs" element={<ActivityLogs />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/supervisors" element={<Supervisors />} />
+            <Route path="/package" element={<PackagesPage />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/profil" element={<AdminProfile />} />
             <Route path="/register" element={<Register />}>

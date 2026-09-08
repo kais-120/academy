@@ -35,7 +35,7 @@ const NAV_ITEMS = [
   { label: 'التلاميذ', to: '/students', icon: GraduationCap },
   { label: 'المعلمون', to: '/teachers', icon: Users },
   { label: 'سجل الحضور', to: '/register', icon: BookOpenCheck, matchPrefix: '/register' },
-  { label: 'باقة دراسية', to: '/register', icon: MdOutlineLocalOffer, matchPrefix: '/package' },
+  { label: 'باقة دراسية', to: '/package', icon: MdOutlineLocalOffer, matchPrefix: '/package' },
   { label: 'المدفوعات', to: '/payments', icon: Wallet, matchPrefix: '/payments' },
   { label: 'الإعدادات', to: '/settings', icon: Settings },
 ];
@@ -103,7 +103,7 @@ function SidebarContent({
   showCollapseToggle = true
 }) {
   const { user } = useAuth();
-  const isDirector = user?.role === 'مديرة';
+  const isDirector = user?.role === 'مدير';
 
   const visibleNavItems = isDirector
     ? NAV_ITEMS
