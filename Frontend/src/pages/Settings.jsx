@@ -46,8 +46,6 @@ import TransportFeesTab from '../components/settings/TransportFeesTab';
 const TABS = [
   { label: 'عام', icon: Building2, panel: GeneralInfoTab },
   { label: 'مصاريف الدراسة', icon: GraduationCap, panel: TuitionFeesTab },
-  { label: 'معاليم الميدعة والكتب', icon: BookOpen, panel: DaycareBooksFeesTab },
-  { label: 'مصاريف النقل', icon: Bus, panel: TransportFeesTab },
 ];
 
 function getAuthSession() {

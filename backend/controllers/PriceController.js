@@ -33,7 +33,7 @@ const createActivityLog = async (
 exports.getPrices = async (req, res) => {
     try {
         const price = await Price.findAll({
-            order: [["label", "ASC"]],
+            order: [["id", "ASC"]],
 
         });
 

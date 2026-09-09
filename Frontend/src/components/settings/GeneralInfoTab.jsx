@@ -123,7 +123,7 @@ export default function GeneralInfoTab() {
         <FormControl gridColumn={{ md: 'span 2' }}>
           <FormLabel fontSize="sm">اسم المدرسة</FormLabel>
           <Input
-            value={form.name || ''}
+            value={form?.name || ''}
             onChange={setField('name')}
             isDisabled={isLoading}
           />
@@ -132,7 +132,7 @@ export default function GeneralInfoTab() {
         <FormControl gridColumn={{ md: 'span 2' }}>
           <FormLabel fontSize="sm">العنوان</FormLabel>
           <Input
-            value={form.address || ''}
+            value={form?.address || ''}
             onChange={setField('address')}
             isDisabled={isLoading}
           />
@@ -141,7 +141,7 @@ export default function GeneralInfoTab() {
         <FormControl>
           <FormLabel fontSize="sm">رقم الهاتف</FormLabel>
           <Input
-            value={form.phone || ''}
+            value={form?.phone || ''}
             onChange={setField('phone')}
             isDisabled={isLoading}
           />
@@ -151,7 +151,7 @@ export default function GeneralInfoTab() {
           <FormLabel fontSize="sm">البريد الإلكتروني</FormLabel>
           <Input
             type="email"
-            value={form.email || ''}
+            value={form?.email || ''}
             onChange={setField('email')}
             isDisabled={isLoading}
           />
@@ -160,7 +160,7 @@ export default function GeneralInfoTab() {
         <FormControl>
           <FormLabel fontSize="sm">المدير</FormLabel>
           <Input
-            value={form.director || ''}
+            value={form?.director || ''}
             onChange={setField('director')}
             isDisabled={isLoading}
           />
@@ -169,7 +169,7 @@ export default function GeneralInfoTab() {
         <FormControl>
           <FormLabel fontSize="sm">السنة الدراسية</FormLabel>
           <Input
-            value={form.academic_year || ''}
+            value={form?.academic_year || ''}
             onChange={setField('academic_year')}
             isDisabled={isLoading}
           />

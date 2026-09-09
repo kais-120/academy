@@ -44,18 +44,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('fr-FR');
 }
 
-// عدد الإخوة المسموح بهم في العروض: 3 و 4 فقط
-function getOfferMessage(count) {
-  const num = Number(count);
-  if (!num) return null;
-  if (num === 3) {
-    return { status: 'success', text: 'الطفل الثالث يستفيد من تخفيض 50% على معلوم التسجيل.', promotion: 'discount_50' };
-  }
-  if (num === 4) {
-    return { status: 'success', text: 'الطفل الرابع يستفيد من تسجيل مجاني بالكامل.', promotion: 'free' };
-  }
-  return { status: 'info', text: 'لا يوجد عرض خاص متاح حاليا لهذا العدد من الإخوة.', promotion: null };
-}
+
 
 // تحويل رمز العرض إلى نص واضح للمستخدم داخل نموذج التلميذ
 function getPromotionLabel(promotion) {
@@ -195,54 +184,9 @@ const isDisabled = today >= startDate && today <= endDate;
      setOfferSession(null);
     offersModal.onOpen();
   };
-// بدء جلسة إضافة التلاميذ حسب العرض
-const handleStartOfferSession = () => {
-  if (!validateOfferForm()) return;
-  const target = Number(siblingsCount);
-  const offer = getOfferMessage(siblingsCount);
-  setOfferSession({
-    fatherName: fatherName.trim(),
-    target,
-    promotion: offer?.promotion || null,
-    addedStudents: [],
-  });
-};
-// إلغاء الجلسة والرجوع لنقطة البداية
-const handleCancelOfferSession = () => {
-  setOfferSession(null);
-  setFatherName('');
-  setSiblingsCount('');
-  setOfferErrors({});
-};
-// فتح نافذة إضافة تلميذ التالي ضمن الجلسة الحالية
-const handleAddNextStudentInOffer = () => {
-  if (!offerSession) return;
-  const position = offerSession.addedStudents.length + 1;
-  const isLast = position === offerSession.target;
 
-  setPendingOffer({
-    fatherName: offerSession.fatherName,
-    position,
-    isLast,
-    promotion: offerSession.promotion,
-  });
 
-  setSelectedStudent(null);
-  offersModal.onClose();
-  formModal.onOpen();
-};
 
-// إنهاء الجلسة بعد اكتمال العدد
-const handleFinishOfferSession = () => {
-  toast({
-    title: 'تم إكمال تسجيل جميع التلاميذ ضمن هذا العرض',
-    status: 'success',
-    duration: 3000,
-    isClosable: true,
-  });
-  offersModal.onClose();
-  handleCancelOfferSession();
-};
   const handleSubmit = async (formData, { resetForm }) => {
   setIsSaving(true);
   setUniqueIsError(false);
@@ -477,57 +421,26 @@ const handleFinishOfferSession = () => {
     }
   };
 
-  const handleAddStudentWithOffer = () => {
-    if (!validateOfferForm()) return;
-
-    const offer = getOfferMessage(siblingsCount);
-
-    setPendingOffer({
-      fatherName: fatherName.trim(),
-      childrenCount: Number(siblingsCount),
-      promotion: offer?.promotion || null,
-    });
-
-    setSelectedStudent(null);
-    offersModal.onClose();
-    formModal.onOpen();
-  };
 
   const columns = [
     { ket: "displayNumber", label: '#', sortable: false, render: (row) => row.displayNumber },
-    { key: 'unique_id', label: 'المعرف الوحيد', sortable: true, render: (row) => row?.unique_id || "-" },
     { key: 'name', label: 'الاسم', sortable: true },
     { key: 'last_name', label: 'اللقب', sortable: true },
+    { key: 'stage', label: 'المرحلة', sortable: true },
+    { key: 'section', label: 'الشعبة', sortable: true },
+   
     {
-      key: 'gender',
-      label: 'الجنس',
-      sortable: true,
-      render: (row) => (
-        <Badge
-          bg={row.gender === 'بنت' ? 'brand.50' : 'accent.50'}
-          color={row.gender === 'ولد' ? 'brand.700' : 'accent.500'}
-          borderRadius="full"
-          px={2.5}
-        >
-          {row.gender}
-        </Badge>
-      ),
-    },
-    { key: 'birthday', label: 'تاريخ الميلاد', sortable: true, render: (row) => formatDate(row.birthday) },
-    {
-      key: 'class',
+      key: 'level',
       label: 'الاقسام',
       sortable: true,
       render: (row) => (
         <Badge bg="ink.100" color="ink.700" borderRadius="full" px={2.5} fontWeight="600">
-          {row.class}
+          {row.level}
         </Badge>
       ),
     },
-    { key: 'address', label: 'العنوان' },
   ];
 
-  const currentOffer = getOfferMessage(siblingsCount);
 
   return (
     <Box dir='rtl' >
@@ -781,172 +694,7 @@ const handleFinishOfferSession = () => {
 
       <BacStudentFormModal isOpen={offersModal.isOpen} onClose={offersModal.onClose} />
 
-    {/* <Modal isOpen={offersModal.isOpen} onClose={offersModal.onClose} isCentered dir="rtl" size="lg">
-  <ModalOverlay />
-  <ModalContent dir="rtl">
-    <ModalHeader>عروض التسجيل حسب عدد الإخوة</ModalHeader>
-    <ModalCloseButton insetInlineStart={3} insetInlineEnd="auto" />
 
-    {!offerSession ? (
-      // ---------- الخطوة 1: تحديد الأب وعدد الإخوة ----------
-      <>
-        <ModalBody>
-          <VStack spacing={4} align="stretch">
-            <FormControl isRequired isInvalid={Boolean(offerErrors.fatherName)}>
-              <FormLabel fontSize="sm">اسم الأب</FormLabel>
-              <Input
-                dir="rtl"
-                placeholder="مثال: محمد بن علي"
-                value={fatherName}
-                onChange={(e) => setFatherName(e.target.value)}
-                borderRadius="lg"
-                borderColor="ink.200"
-              />
-              <FormErrorMessage>{offerErrors.fatherName}</FormErrorMessage>
-            </FormControl>
-
-            <FormControl isRequired isInvalid={Boolean(offerErrors.siblingsCount)}>
-              <FormLabel fontSize="sm">عدد الإخوة المراد تسجيلهم</FormLabel>
-              <Select
-                dir="rtl"
-                value={siblingsCount}
-                onChange={(e) => setSiblingsCount(e.target.value)}
-                placeholder="اختر العدد"
-                sx={{
-                  textAlign: 'right', paddingRight: '1rem', paddingLeft: '2rem',
-                  '& + div': { insetInlineEnd: 'auto', insetInlineStart: '0.5rem' },
-                }}
-              >
-                <option value="3">3</option>
-                <option value="4">4</option>
-              </Select>
-              <FormErrorMessage>{offerErrors.siblingsCount}</FormErrorMessage>
-            </FormControl>
-
-            {getOfferMessage(siblingsCount) && (
-              <Alert status={getOfferMessage(siblingsCount).status} borderRadius="lg" fontSize="sm">
-                <AlertIcon />
-                {getOfferMessage(siblingsCount).text}
-              </Alert>
-            )}
-
-            <Box bg="ink.50" borderRadius="lg" px={4} py={3}>
-              <Text fontSize="xs" color="ink.500">
-                • الطفل الثالث: تخفيض 50% على معلوم التسجيل.
-                <br />
-                • الطفل الرابع: تسجيل مجاني بالكامل.
-                <br />
-                سيتم فتح نموذج تلميذ جديد في كل مرة، مع اسم الأب مثبّتاً تلقائياً، حتى إتمام العدد المطلوب.
-              </Text>
-            </Box>
-          </VStack>
-        </ModalBody>
-        <ModalFooter>
-          <HStack spacing={2} w="full">
-            <Button variant="ghost" onClick={offersModal.onClose}>
-              إلغاء
-            </Button>
-            <Button
-              flex={1}
-              colorScheme="purple"
-              leftIcon={<UserPlus size={16} />}
-              onClick={handleStartOfferSession}
-            >
-              بدء إضافة التلاميذ
-            </Button>
-          </HStack>
-        </ModalFooter>
-      </>
-    ) : (
-      // ---------- الخطوة 2: عرض الـ cards ومتابعة الإضافة ----------
-      <>
-        <ModalBody>
-          <VStack spacing={4} align="stretch">
-            <Alert status="info" borderRadius="lg" fontSize="sm">
-              <AlertIcon />
-              الأب: <b>&nbsp;{offerSession.fatherName}&nbsp;</b> — تمت إضافة {offerSession.addedStudents.length} من {offerSession.target}
-            </Alert>
-
-            {offerSession.addedStudents.length === 0 && (
-              <Text fontSize="sm" color="ink.500">
-                لم تتم إضافة أي تلميذ بعد. اضغط على "إضافة تلميذ" للبدء.
-              </Text>
-            )}
-
-            <VStack spacing={2} align="stretch">
-              {offerSession.addedStudents.map((s, idx) => (
-                <Box
-                  key={s.id}
-                  borderWidth="1px"
-                  borderColor="ink.200"
-                  borderRadius="lg"
-                  px={4}
-                  py={3}
-                >
-                  <HStack justify="space-between">
-                    <HStack spacing={3}>
-                      <Badge borderRadius="full" px={2.5} bg="ink.100" color="ink.700">
-                        {idx + 1}
-                      </Badge>
-                      <Text fontWeight="600">{s.last_name} {s.name}</Text>
-                      {s.classe && (
-                        <Badge borderRadius="full" px={2.5} bg="ink.100" color="ink.700">
-                          {s.classe}
-                        </Badge>
-                      )}
-                    </HStack>
-                    {s.promotionApplied && (
-                      <Badge colorScheme="purple" borderRadius="full" px={2.5}>
-                        <HStack spacing={1}>
-                          <Gift size={12} />
-                          <Text>العرض مطبق</Text>
-                        </HStack>
-                      </Badge>
-                    )}
-                  </HStack>
-                </Box>
-              ))}
-            </VStack>
-
-            {offerSession.addedStudents.length >= offerSession.target && (
-              <Alert status="success" borderRadius="lg" fontSize="sm">
-                <AlertIcon />
-                تم إكمال تسجيل جميع التلاميذ وتطبيق العرض على آخر تلميذ.
-              </Alert>
-            )}
-          </VStack>
-        </ModalBody>
-        <ModalFooter>
-          <HStack spacing={2} w="full">
-            <Button variant="ghost" onClick={handleCancelOfferSession}>
-              إلغاء العملية
-            </Button>
-
-            {offerSession.addedStudents.length < offerSession.target ? (
-              <Button
-                flex={1}
-                colorScheme="brand"
-                leftIcon={<UserPlus size={16} />}
-                onClick={handleAddNextStudentInOffer}
-              >
-                إضافة تلميذ ({offerSession.addedStudents.length + 1} من {offerSession.target})
-              </Button>
-            ) : (
-              <Button
-                flex={1}
-                colorScheme="green"
-                leftIcon={<CheckCircle2 size={16} />}
-                onClick={handleFinishOfferSession}
-              >
-                إنهاء
-              </Button>
-            )}
-          </HStack>
-        </ModalFooter>
-      </>
-    )}
-  </ModalContent>
-    </Modal> */}
     </Box>
   );
 }

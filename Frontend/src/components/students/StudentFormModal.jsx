@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   SimpleGrid,
   FormControl,
@@ -20,8 +20,6 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 
 import FormModal from '../common/FormModal';
-import { paiements } from '../../data/school';
-import { AxiosToken } from '../../api/Api';
 
 // ---------------------------------------------------------------------------
 // المراحل والمستويات
@@ -58,26 +56,7 @@ const TRACKS_BY_LEVEL = {
   'باكالوريا': ['علوم تجريبية', 'آداب', 'إعلامية', 'اقتصاد وتصرف', 'رياضيات', 'تكنولوجية'],
 };
 
-const getTracksForLevel = (niveau) => TRACKS_BY_LEVEL[niveau] || null;
-
-const findStageForLevel = (niveau) => {
-  const entry = Object.entries(STAGE_LEVELS).find(([, levelsArr]) => levelsArr.includes(niveau));
-  return entry ? entry[0] : '';
-};
-
-// classe النهائية المخزّنة = "المستوى" أو "المستوى - الشعبة" عند وجود شعبة
-const buildClasse = (niveau, shoba) => {
-  if (!niveau) return '';
-  return shoba ? `${niveau} - ${shoba}` : niveau;
-};
-
-// عكس العملية عند التعديل: نحاول استخراج المستوى والشعبة من classe المخزّنة
-const parseClasse = (classe) => {
-  if (!classe) return { marhala: '', niveau: '', shoba: '' };
-  const [niveauPart, shobaPart] = classe.split(' - ').map((s) => s?.trim());
-  const marhala = findStageForLevel(niveauPart);
-  return { marhala, niveau: niveauPart || '', shoba: shobaPart || '' };
-};
+const getTracksForLevel = (level) => TRACKS_BY_LEVEL[level] || null;
 
 // ---------------------------------------------------------------------------
 // المواد الدراسية حسب المرحلة / المستوى / الشعبة
@@ -97,7 +76,6 @@ const MATIERES_THANAWI_1 = [
   'التاريخ', 'الجغرافيا', 'الإعلامية', 'التكنولوجيا',
 ];
 
-// نفس الشعب المستعملة في TRACKS_BY_LEVEL أعلاه (بداية من السنة الثانية ثانوي إلى الباكالوريا)
 const MATIERES_BY_SHOBA = {
   'رياضيات': ['الرياضيات', 'الفيزياء', 'علوم الحياة والأرض', 'العربية', 'الفرنسية', 'الإنجليزية', 'الإعلامية', 'الفلسفة'],
   'علوم تجريبية': ['الرياضيات', 'الفيزياء', 'علوم الحياة والأرض', 'العربية', 'الفرنسية', 'الإنجليزية', 'الإعلامية', 'الفلسفة'],
@@ -107,12 +85,12 @@ const MATIERES_BY_SHOBA = {
   'آداب': ['العربية', 'الفلسفة', 'التاريخ والجغرافيا', 'الفرنسية', 'الإنجليزية', 'الإعلامية'],
 };
 
-const getMatieresOptions = (marhala, niveau, shoba) => {
-  if (marhala === 'ابتدائي') return MATIERES_PRIMAIRE;
-  if (marhala === 'اعدادي') return MATIERES_IIDADI;
-  if (marhala === 'ثانوي') {
-    if (niveau === 'السنة الأولى ثانوي') return MATIERES_THANAWI_1;
-    if (shoba) return MATIERES_BY_SHOBA[shoba] || null;
+const getMatieresOptions = (stage, level, section) => {
+  if (stage === 'ابتدائي') return MATIERES_PRIMAIRE;
+  if (stage === 'اعدادي') return MATIERES_IIDADI;
+  if (stage === 'ثانوي') {
+    if (level === 'السنة الأولى ثانوي') return MATIERES_THANAWI_1;
+    if (section) return MATIERES_BY_SHOBA[section] || null;
     return null; // بانتظار اختيار الشعبة
   }
   return null;
@@ -125,25 +103,15 @@ const sxSelectRtl = {
 
 const EMPTY_FORM = {
   name: '',
-  unique_id: '',
   last_name: '',
   father_name: '',
   mother_name: '',
   father_phone: '',
   mother_phone: '',
-  gender: 'ولد',
-  birthday: '',
-  marhala: '',
-  niveau: '',
-  shoba: '',
-  matieres: [],
-  classe: '',
-  address: '',
-  payment_type: '',
-  transport: 'false',
-  is_take_uniform: 'false',
-  is_take_book: 'false',
-  zone_id: '',
+  stage: '',
+  level: '',
+  section: '',
+  materials: [],
 };
 
 const studentSchema = Yup.object({
@@ -175,34 +143,25 @@ const studentSchema = Yup.object({
     )
     .nullable(),
 
-  marhala: Yup.string()
+  stage: Yup.string()
     .trim()
     .required('المرحلة مطلوبة.'),
 
-  niveau: Yup.string()
+  level: Yup.string()
     .trim()
     .required('المستوى مطلوب.'),
 
-  shoba: Yup.string()
+  section: Yup.string()
     .trim()
-    .when('niveau', {
-      is: (niveau) => Boolean(getTracksForLevel(niveau)),
+    .when('level', {
+      is: (level) => Boolean(getTracksForLevel(level)),
       then: (schema) => schema.required('الشعبة مطلوبة.'),
       otherwise: (schema) => schema.notRequired(),
     }),
 
-  matieres: Yup.array()
+  materials: Yup.array()
     .of(Yup.string())
     .min(1, 'اختر مادة واحدة على الأقل.'),
-
-  classe: Yup.string()
-    .trim()
-    .required('القسم مطلوب.'),
-
-  payment_type: Yup.string()
-    .trim()
-    .required('طريقة الدفع مطلوب.'),
-
 });
 
 export default function StudentFormModal({
@@ -211,58 +170,24 @@ export default function StudentFormModal({
   onSubmit,
   student = null,
   isSaving = false,
-  uniqueIsError = false,
   setUniqueIsError = () => {},
-  lockedFatherName = null,      // NEW
-  offerPositionLabel = null,    // NEW
-  offerPromotionLabel = null,   // NEW — "خصم 50%" أو "مجاني بالكامل" عند تلميذ العرض الأخير
 }) {
-  const [zones, setZones] = useState([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await AxiosToken.get('/zone');
-        setZones(response.data.zones);
-      } catch (err) {
-        console.error('error', err);
-      }
-    };
-    fetchData();
-  }, [isSaving]);
-
   const isEditMode = Boolean(student);
-  const isFatherNameLocked = Boolean(lockedFatherName) && !isEditMode;
 
-  const mapStudentToFormValues = (s) => {
-    const { marhala, niveau, shoba } = parseClasse(s.class ?? '');
-    return {
-      name: s.name ?? '',
-      unique_id: s.unique_id ?? '',
-      last_name: s.last_name ?? '',
-      father_name: s.father_name ?? '',
-      mother_name: s.mother_name ?? '',
-      father_phone: s.father_phone ?? '',
-      mother_phone: s.mother_phone ?? '',
-      gender: s.gender ?? 'ولد',
-      birthday: s.birthday ? s.birthday.split('T')[0] : '',
-      marhala,
-      niveau,
-      shoba,
-      matieres: s.matieres ?? [], // NOTE: assumes backend exposes a `matieres` string array on the student
-      classe: s.class ?? '',
-      address: s.address ?? '',
-      payment_type: s.subscription?.payment_type ?? '',
-      transport: s.subscription?.transport ? 'true' : 'false',
-      is_take_uniform: s.subscription?.is_take_uniform ? 'true' : 'false',
-      is_take_book: s.subscription?.is_take_book ? 'true' : 'false',
-      zone_id: s.subscription?.zone?.id ?? '',
-    };
-  };
+  const mapStudentToFormValues = (s) => ({
+    name: s.name ?? '',
+    last_name: s.last_name ?? '',
+    father_name: s.father_name ?? '',
+    mother_name: s.mother_name ?? '',
+    father_phone: s.father_phone ?? '',
+    mother_phone: s.mother_phone ?? '',
+    stage: s.stage ?? '',
+    level: s.level ?? '',
+    section: s.section ?? '',
+    materials: s.materials ?? [],
+  });
 
-  const initialValues = student
-    ? mapStudentToFormValues(student)
-    : { ...EMPTY_FORM, father_name: lockedFatherName || '' }; // NEW
+  const initialValues = student ? mapStudentToFormValues(student) : EMPTY_FORM;
 
   return (
     <Formik
@@ -279,32 +204,29 @@ export default function StudentFormModal({
         handleSubmit,
         setFieldValue,
       }) => {
-        const tracks = getTracksForLevel(values.niveau);
-        const availableLevels = STAGE_LEVELS[values.marhala] || [];
-        const matieresOptions = getMatieresOptions(values.marhala, values.niveau, values.shoba);
+        const tracks = getTracksForLevel(values.level);
+        const availableLevels = STAGE_LEVELS[values.stage] || [];
+        const materialsOptions = getMatieresOptions(values.stage, values.level, values.section);
 
-        const handleMarhalaChange = (e) => {
-          const marhala = e.target.value;
-          setFieldValue('marhala', marhala);
-          setFieldValue('niveau', '');
-          setFieldValue('shoba', '');
-          setFieldValue('matieres', []);
-          setFieldValue('classe', '');
+        const handleStageChange = (e) => {
+          const stage = e.target.value;
+          setFieldValue('stage', stage);
+          setFieldValue('level', '');
+          setFieldValue('section', '');
+          setFieldValue('materials', []);
         };
 
-        const handleNiveauChange = (e) => {
-          const niveau = e.target.value;
-          setFieldValue('niveau', niveau);
-          setFieldValue('shoba', '');
-          setFieldValue('matieres', []);
-          setFieldValue('classe', buildClasse(niveau, ''));
+        const handleLevelChange = (e) => {
+          const level = e.target.value;
+          setFieldValue('level', level);
+          setFieldValue('section', '');
+          setFieldValue('materials', []);
         };
 
-        const handleShobaChange = (e) => {
-          const shoba = e.target.value;
-          setFieldValue('shoba', shoba);
-          setFieldValue('matieres', []);
-          setFieldValue('classe', buildClasse(values.niveau, shoba));
+        const handleSectionChange = (e) => {
+          const section = e.target.value;
+          setFieldValue('section', section);
+          setFieldValue('materials', []);
         };
 
         return (
@@ -314,9 +236,7 @@ export default function StudentFormModal({
             title={
               isEditMode
                 ? `تعديل التلميذ — ${student.name} ${student.last_name}`
-                : offerPositionLabel
-                  ? `إضافة تلميذ — ${offerPositionLabel}` // NEW
-                  : 'إضافة تلميذ'
+                : 'إضافة تلميذ'
             }
             footer={
               <>
@@ -330,12 +250,6 @@ export default function StudentFormModal({
             }
           >
             <Form id="student-form" dir="rtl">
-              {offerPromotionLabel && (
-                <Alert status="success" borderRadius="lg" fontSize="sm" mb={4}>
-                  <AlertIcon />
-                  سيتم تطبيق عرض الإخوة على هذا التلميذ: <b>&nbsp;{offerPromotionLabel}&nbsp;</b>
-                </Alert>
-              )}
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
 
                 {/* Name */}
@@ -352,17 +266,14 @@ export default function StudentFormModal({
                   <FormErrorMessage>{errors.last_name}</FormErrorMessage>
                 </FormControl>
 
-                {/* Father - locked when coming from an offer session */}
-                <FormControl isDisabled={isFatherNameLocked}>
-                  <FormLabel fontSize="sm">
-                    اسم الأب {isFatherNameLocked && <Badge ml={2} colorScheme="purple">مثبّت من العرض</Badge>}
-                  </FormLabel>
+                {/* Father */}
+                <FormControl>
+                  <FormLabel fontSize="sm">اسم الأب</FormLabel>
                   <Input
                     name="father_name"
                     value={values.father_name}
                     onChange={handleChange}
                     placeholder="كريم علي"
-                    isDisabled={isFatherNameLocked}
                   />
                 </FormControl>
 
@@ -386,100 +297,83 @@ export default function StudentFormModal({
                   <FormErrorMessage>{errors.mother_phone}</FormErrorMessage>
                 </FormControl>
 
-                {/* المرحلة */}
-                <FormControl isInvalid={touched.marhala && errors.marhala} isRequired>
+                {/* المرحلة (stage) */}
+                <FormControl isInvalid={touched.stage && errors.stage} isRequired>
                   <FormLabel fontSize="sm">المرحلة</FormLabel>
                   <Select
-                    name="marhala"
+                    name="stage"
                     placeholder="اختر المرحلة"
-                    value={values.marhala}
-                    onChange={handleMarhalaChange}
+                    value={values.stage}
+                    onChange={handleStageChange}
                     sx={sxSelectRtl}
                   >
                     {STAGES.map((stage) => (
                       <option key={stage} value={stage}>{stage}</option>
                     ))}
                   </Select>
-                  <FormErrorMessage>{errors.marhala}</FormErrorMessage>
+                  <FormErrorMessage>{errors.stage}</FormErrorMessage>
                 </FormControl>
 
-                {/* المستوى */}
-                <FormControl isInvalid={touched.niveau && errors.niveau} isRequired isDisabled={!values.marhala}>
+                {/* المستوى (level) */}
+                <FormControl isInvalid={touched.level && errors.level} isRequired isDisabled={!values.stage}>
                   <FormLabel fontSize="sm">المستوى</FormLabel>
                   <Select
-                    name="niveau"
+                    name="level"
                     placeholder="اختر المستوى"
-                    value={values.niveau}
-                    onChange={handleNiveauChange}
-                    isDisabled={!values.marhala}
+                    value={values.level}
+                    onChange={handleLevelChange}
+                    isDisabled={!values.stage}
                     sx={sxSelectRtl}
                   >
-                    {availableLevels.map((niveau) => (
-                      <option key={niveau} value={niveau}>{niveau}</option>
+                    {availableLevels.map((level) => (
+                      <option key={level} value={level}>{level}</option>
                     ))}
                   </Select>
-                  <FormErrorMessage>{errors.niveau}</FormErrorMessage>
+                  <FormErrorMessage>{errors.level}</FormErrorMessage>
                 </FormControl>
 
-                {/* الشعبة - تظهر فقط بداية من السنة الثانية ثانوي */}
+                {/* الشعبة (section) - تظهر فقط بداية من السنة الثانية ثانوي */}
                 {tracks && (
-                  <FormControl isInvalid={touched.shoba && errors.shoba} isRequired>
+                  <FormControl isInvalid={touched.section && errors.section} isRequired>
                     <FormLabel fontSize="sm">الشعبة</FormLabel>
                     <Select
-                      name="shoba"
+                      name="section"
                       placeholder="اختر الشعبة"
-                      value={values.shoba}
-                      onChange={handleShobaChange}
+                      value={values.section}
+                      onChange={handleSectionChange}
                       sx={sxSelectRtl}
                     >
-                      {tracks.map((shoba) => (
-                        <option key={shoba} value={shoba}>{shoba}</option>
+                      {tracks.map((section) => (
+                        <option key={section} value={section}>{section}</option>
                       ))}
                     </Select>
-                    <FormErrorMessage>{errors.shoba}</FormErrorMessage>
+                    <FormErrorMessage>{errors.section}</FormErrorMessage>
                   </FormControl>
                 )}
 
-                {/* المواد الدراسية */}
-                {matieresOptions && (
+                {/* المواد الدراسية (materials) */}
+                {materialsOptions && (
                   <FormControl
-                    isInvalid={touched.matieres && errors.matieres}
+                    isInvalid={touched.materials && errors.materials}
                     isRequired
                     gridColumn={{ md: '1 / -1' }}
                   >
                     <FormLabel fontSize="sm">المواد</FormLabel>
                     <CheckboxGroup
-                      value={values.matieres}
-                      onChange={(vals) => setFieldValue('matieres', vals)}
+                      value={values.materials}
+                      onChange={(vals) => setFieldValue('materials', vals)}
                     >
                       <Wrap spacing={4}>
-                        {matieresOptions.map((matiere) => (
-                          <WrapItem key={matiere}>
-                            <Checkbox value={matiere}>{matiere}</Checkbox>
+                        {materialsOptions.map((materiel) => (
+                          <WrapItem key={materiel}>
+                            <Checkbox value={materiel}>{materiel}</Checkbox>
                           </WrapItem>
                         ))}
                       </Wrap>
                     </CheckboxGroup>
-                    <FormErrorMessage>{errors.matieres}</FormErrorMessage>
+                    <FormErrorMessage>{errors.materials}</FormErrorMessage>
                   </FormControl>
                 )}
-
-                {/* Payment */}
-                <FormControl isInvalid={touched.payment_type && errors.payment_type} isRequired>
-                  <FormLabel fontSize="sm">الدفع</FormLabel>
-                  <Select
-                    name="payment_type"
-                    placeholder="اختر طريق الدفع"
-                    value={values.payment_type}
-                    onChange={handleChange}
-                    sx={sxSelectRtl}
-                  >
-                    {paiements.map((paiement) => (
-                      <option key={paiement} value={paiement}>{paiement}</option>
-                    ))}
-                  </Select>
-                  <FormErrorMessage>{errors.payment_type}</FormErrorMessage>
-                </FormControl>
 
               </SimpleGrid>
             </Form>

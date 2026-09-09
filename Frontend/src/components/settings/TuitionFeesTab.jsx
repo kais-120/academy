@@ -13,7 +13,6 @@ import {
   InputLeftElement,
   HStack,
   Button,
-  ButtonGroup,
   Text,
   useToast,
 } from '@chakra-ui/react';
@@ -23,9 +22,13 @@ import { AxiosToken } from '../../api/Api';
 export default function TuitionFeesTab() {
   const toast = useToast();
 
-  const [fees, setFees] = useState([]);
+  const [fees, setFees] = useState([
+    { level: 'ابتدائي', amount: 30 },
+    { level: 'اعدادي', amount: 40 },
+    { level: 'ثانوي', amount: 45 },
+    { level: 'باكالوريا', amount: 50 },
+  ]);
   const [isSaving, setIsSaving] = useState(false);
-  const [period, setPeriod] = useState('monthly');
 
   // Get prices
   useEffect(() => {
@@ -49,16 +52,11 @@ export default function TuitionFeesTab() {
     fetchData();
   }, []);
 
-  // Only display the selected type
-  const displayedFees = fees.filter(
-    (fee) => fee.type === period
-  );
-
   // Update amount
-  const updateAmount = (id, value) => {
+  const updateAmount = (level, value) => {
     setFees((prev) =>
       prev.map((fee) =>
-        fee.id === id
+        fee.level === level
           ? {
               ...fee,
               amount: value,
@@ -108,61 +106,32 @@ export default function TuitionFeesTab() {
       borderColor="ink.200"
       boxShadow="card"
     >
-      <HStack justify="space-between" align="flex-start" mb={1}>
-        <Box>
-          <Text
-            fontFamily="heading"
-            fontWeight="700"
-            color="ink.900"
-          >
-            معاليم الدراسة
-          </Text>
-
-          <Text fontSize="sm" color="ink.500" mt={1}>
-            قم بتعديل المعاليم حسب المستوى، ثم قم بحفظ التغييرات.
-          </Text>
-        </Box>
-
-        <ButtonGroup
-          dir="ltr"
-          size="sm"
-          isAttached
-          variant="outline"
+      <Box mb={1}>
+        <Text
+          fontFamily="heading"
+          fontWeight="700"
+          color="ink.900"
         >
-          <Button
-            onClick={() => setPeriod('monthly')}
-            colorScheme={period === 'monthly' ? 'blue' : 'gray'}
-            variant={period === 'monthly' ? 'solid' : 'outline'}
-          >
-            شهري
-          </Button>
+          معاليم الدراسة
+        </Text>
 
-          <Button
-            onClick={() => setPeriod('yearly')}
-            colorScheme={period === 'yearly' ? 'blue' : 'gray'}
-            variant={period === 'yearly' ? 'solid' : 'outline'}
-          >
-            سنوي
-          </Button>
-        </ButtonGroup>
-      </HStack>
+        <Text fontSize="sm" color="ink.500" mt={1}>
+          قم بتعديل المعاليم حسب المرحلة الدراسية، ثم قم بحفظ التغييرات.
+        </Text>
+      </Box>
 
       <TableContainer mt={5}>
         <Table size="sm" variant="simple">
           <Thead>
             <Tr>
-              <Th>المستوى</Th>
+              <Th>المرحلة الدارسية</Th>
 
-              <Th isNumeric>
-                {period === 'yearly'
-                  ? 'المعلوم السنوي'
-                  : 'المعلوم الشهري'}
-              </Th>
+              <Th isNumeric>المعلوم الشهري بالمادة</Th>
             </Tr>
           </Thead>
 
           <Tbody>
-            {displayedFees.map((fee) => (
+            {fees.map((fee) => (
               <Tr key={fee.id}>
                 <Td fontWeight="500" color="ink.800">
                   {fee.label}
@@ -181,7 +150,7 @@ export default function TuitionFeesTab() {
                       value={fee.amount}
                       onChange={(e) =>
                         updateAmount(
-                          fee.id,
+                          fee.level,
                           Number(e.target.value)
                         )
                       }

@@ -5,6 +5,7 @@ const Price = require("../models/TuitionFee");
 const { Op } = require("sequelize");
 const ActivityLog = require("../models/ActivityLog");
 const User = require("../models/Users");
+const StudentByMaterials = require("../models/StudentByMaterials");
 const getUser = async (req) => {
         const userId = req.userId;
         const user = await User.findByPk(userId);
@@ -41,32 +42,17 @@ exports.createStudent = [
         .trim()
         .matches(/^\d{8}$/)
         .withMessage("Invalid mother phone number."),
-
-    body("gender")
-        .isIn(["بنت", "ولد"])
-        .withMessage("Gender must be M or F."),
-
-    body("birthday")
-        .notEmpty()
-        .withMessage("Date of birth is required.")
-        .isISO8601()
-        .withMessage("Invalid date of birth."),
-
-    body("classe")
+    body("level")
         .trim()
         .notEmpty()
-        .withMessage("Class is required."),
+        .withMessage("Level is required."),
 
-    body("address")
-        .trim()
+    body("materials")
         .notEmpty()
-        .withMessage("Address is required."),
+        .withMessage("materials is required.")
+        .isArray({ min: 1 })
+        .withMessage("materials must be a non-empty array."),
 
-    // النسبة/المجانية المطبقة على آخر تلميذ في عرض الإخوة (3 -> 50%, 4 -> مجاني)
-    body("promotion")
-        .optional({ checkFalsy: true })
-        .isIn(["discount_50", "free"])
-        .withMessage("Invalid promotion type."),
 
     async (req, res) => {
         try {
@@ -88,79 +74,23 @@ exports.createStudent = [
                 mother_name,
                 father_phone,
                 mother_phone,
-                address,
-                classe,
-                gender,
-                birthday,
-                unique_id,
-                transport,
-                is_take_book,
-                is_take_uniform,
-                payment_type,
-                promotion,
-                siblings_count,
+                level,
+                stage,
+                section,
+                materials
             } = req.body;
-
-            if (unique_id != null && unique_id !== "") {
-                const studentUnique = await Student.findOne({ where: { unique_id } });
-                if (studentUnique) {
-                    return res.status(400).json({
-                        message: "unique id exist",
-                    });
-                }
-            }
-           
-            const toBool = (v) => v === true || v === "true";
-
-
-           
-
-            const addition =
-                bookFee +
-                (toBool(transport) ? 10 : 0) +
-                (toBool(is_take_uniform) ? 10 : 0);
-
-            let totalPrice = null;
-
-            if (
-                payment_type === "يدفع شهريًا" ||
-                payment_type === "يدفع بالثلاثي" ||
-                payment_type === "يدفع سنويًا"
-            ) {
-                const priceType = payment_type === "يدفع سنويًا" ? "yearly" : "monthly";
-
-                const price = await Price.findOne({ where: { label: classe, type: priceType } });
-                if (!price) {
-                    return res.status(400).json({
-                        message: "that class not exist.",
-                    });
-                }
-
         
-                }
+            const stageChoosing = (stage === "ثانوي" && level === "باكالوريا") ? "باكالوريا" : stage
 
-                const baseAmount = parseFloat(price.amount);
+                const price = await Price.findOne({ where: { label: stageChoosing } });
 
-                if (priceType === "yearly") {
-                    totalPrice = baseAmount + addition;
-                } else {
-                    const monthlyAmount = baseAmount / 2;
-                    totalPrice = payment_type === "يدفع بالثلاثي"
-                        ? (monthlyAmount * 3) + addition
-                        : monthlyAmount + addition;
-                }
+                    if (!price) {
+                        return res.status(400).json({
+                            message: "That class does not exist.",
+                        });
+                    }
 
-                // تطبيق عرض الإخوة: الطفل الثالث 50%، الطفل الرابع مجاني بالكامل
-                if (promotion === "discount_50") {
-                    totalPrice = totalPrice / 2;
-                } else if (promotion === "free") {
-                    totalPrice = 0;
-                }else if (payment_type !== "غير معني بالدفع") {
-                return res.status(400).json({
-                    message: "Invalid payment type.",
-                });
-            }
-
+                    const totalAmount = price.amount * materials.length;
             const student = await Student.create({
                 name,
                 last_name,
@@ -168,25 +98,22 @@ exports.createStudent = [
                 mother_name,
                 father_phone,
                 mother_phone,
-                gender,
-                birthday,
-                unique_id,
-                class: classe,
-                address,
+                level,
+                section,
+                stage,
             });
+            await Subscription.create({
+                amount:totalAmount,
+                student_id:student.id
+            })
 
-            if (payment_type !== "غير معني بالدفع") {
-                await Subscription.create({
-                    amount: totalPrice,
+              for (const material of materials) {
+                    await StudentByMaterials.create({
+                    label: material,
                     student_id: student.id,
-                    transport,
-                    is_take_book,
-                    is_take_uniform,
-                    payment_type,
-                    promotion: promotion || null,
-                    siblings_count: siblings_count || null,
                 });
             }
+
 
             await ActivityLog.create({
                 action: "create",
@@ -225,15 +152,7 @@ exports.getAllStudents = async (req, res) => {
             include: [{
                 model: Subscription,
                 as: "subscription",
-                attributes: [
-                    "transport",
-                    "is_take_uniform",
-                    "is_take_book",
-                    "payment_type",
-                    "payment_type",
-                    "promotion",
-                    "siblings_count"
-                ],
+               
             
             }]
         });
