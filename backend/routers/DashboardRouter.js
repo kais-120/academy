@@ -1,11 +1,10 @@
 // routes/dashboardRoutes.js
 const express = require('express');
-const { getTotals, getGenderDistribution, getStudentsByLevel,getFinancialSummary, getPaymentsThisMonth, getMonthlyPayments, getTuitionFees, getDashboardSummary, getMonthlyPaymentsDashboard, getPaymentsSummary } = require('../controllers/DashboardController');
+const { getTotals, getStudentsByLevel,getFinancialSummary, getPaymentsThisMonth, getMonthlyPayments, getTuitionFees, getDashboardSummary, getMonthlyPaymentsDashboard, getPaymentsSummary } = require('../controllers/DashboardController');
 const router = express.Router();
 
 router.get('/totals', getTotals);
 
-router.get('/students-by-gender', getGenderDistribution);
 
 router.get('/students-by-level', getStudentsByLevel);
 

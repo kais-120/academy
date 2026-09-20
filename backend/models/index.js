@@ -1,4 +1,6 @@
 const ActivityLog = require("./ActivityLog");
+const Package = require("./Package");
+const PackageSubject = require("./packageSubject");
 const Scoring = require("./Scoring");
 const Student = require("./Student");
 const Subject = require("./Subject");
@@ -53,4 +55,12 @@ ActivityLog.belongsTo(User, {
     as: "user" 
 });
 
-module.exports = {Teacher,Subject,Scoring,Student,Subscription,TeacherPayment,User,ActivityLog}
+Package.hasMany(PackageSubject, {
+    foreignKey: "package_id",
+    as:"packageSubject"
+});
+PackageSubject.belongsTo(Package, {
+    foreignKey: "package_id",
+    as: "package" 
+});
+module.exports = {Teacher,Subject,Scoring,Student,Subscription,TeacherPayment,User,ActivityLog,Package,PackageSubject}

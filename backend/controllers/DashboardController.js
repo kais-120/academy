@@ -29,24 +29,6 @@ exports.getTotals = async (req, res) => {
   }
 }
 
-exports.getGenderDistribution = async (req, res) => {
-  try {
-    const rows = await Student.findAll({
-      attributes: ['gender', [fn('COUNT', col('gender')), 'count']],
-      where:{is_deleted:false},
-      group: ['gender'],
-      raw: true,
-    });
-    const genderDistribution = rows.map((r) => ({
-      gender: r.gender,
-      count: Number(r.count),
-    }));
-    return res.status(200).json({ genderDistribution });
-  } catch (error) {
-    console.error('getGenderDistribution error:', error);
-    return res.status(500).json({ message: 'حدث خطأ أثناء جلب توزيع التلاميذ حسب الجنس' });
-  }
-}
 
 
 exports.getStudentsByLevel = async (req, res) => {
@@ -123,28 +105,12 @@ exports.getMonthlyPayments = async (req, res) => {
 
 exports.getTuitionFees = async (req, res) => {
   try {
-    const fees = await TuitionFee.findAll({
-      attributes: ['id', 'label', 'type', 'amount'],
+    const tuitionFees = await TuitionFee.findAll({
+      attributes: ['id', 'label', 'amount'],
       order: [['id', 'ASC']],
-      raw: true,
     });
 
-    const tuitionFees = fees.reduce(
-      (acc, fee) => {
-        if (fee.type === 'monthly') {
-          acc.monthly.push(fee);
-        } else if (fee.type === 'yearly') {
-          acc.yearly.push(fee);
-        }
-
-        return acc;
-      },
-      {
-        monthly: [],
-        yearly: [],
-      }
-    );
-
+    
     return res.status(200).json({ tuitionFees });
 
   } catch (error) {

@@ -71,9 +71,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const [usersStatus, setUsersStatus] = useState({});
-  const [gendersStatus, setGendersStatus] = useState([]);
   const [studentsByLevel, setStudentsByLevel] = useState([]);
-  const [tuitionFees, setTuitionFees] = useState({});
+  const [tuitionFees, setTuitionFees] = useState([]);
   const [schoolInfo, setSchoolInfo] = useState({});
   const [recentActivities, setRecentActivities] = useState([]);
   const [paymentsThisMonth, setPaymentsThisMonth] = useState({
@@ -89,7 +88,6 @@ export default function Dashboard() {
       try {
         const [
           usersStatusResponse,
-          gendersStatusResponse,
           studentsByLevelResponse,
           tuitionFeesResponse,
           schoolInfoResponse,
@@ -98,17 +96,15 @@ export default function Dashboard() {
           monthlyPaymentsResponse,
         ] = await Promise.all([
           AxiosToken.get('/dashboard/totals'),
-          AxiosToken.get('/dashboard/students-by-gender'),
           AxiosToken.get('/dashboard/students-by-level'),
           AxiosToken.get('/dashboard/tuition-fees'),
           AxiosToken.get('/school-info'),
           AxiosToken.get('/activity-logs?limit=5&page=1'),
-          // AxiosToken.get('/dashboard/payments-summary'),
+          AxiosToken.get('/dashboard/payments-summary'),
           AxiosToken.get(`/dashboard/monthly-payments?year=${new Date().getFullYear()}`),
         ]);
 
         setUsersStatus(usersStatusResponse.data);
-        setGendersStatus(gendersStatusResponse.data.genderDistribution);
         setStudentsByLevel(studentsByLevelResponse.data.studentsByLevel);
         setTuitionFees(tuitionFeesResponse.data.tuitionFees);
         setSchoolInfo(schoolInfoResponse.data.schoolInfo?.[0]);
@@ -155,7 +151,7 @@ export default function Dashboard() {
       </Box>
 
       {/* بطاقات الإحصائيات الرئيسية */}
-      <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} spacing={5}>
+      <SimpleGrid columns={{ base: 1, sm: 2, xl: 2 }} spacing={5}>
         <StatCard
           label="إجمالي التلاميذ"
           value={usersStatus.totalStudents}
@@ -170,20 +166,7 @@ export default function Dashboard() {
           iconColor="accent.500"
           iconBg="accent.50"
         />
-        <StatCard
-          label="إجمالي المراقبين"
-          value={usersStatus.totalSupervisors}
-          icon={ShieldCheck}
-          iconColor="warning.500"
-          iconBg="warning.50"
-        />
-        <StatCard
-          label="إجمالي الموظفين"
-          value={usersStatus.totalEmployees}
-          icon={Briefcase}
-          iconColor="positive.500"
-          iconBg="positive.50"
-        />
+    
       </SimpleGrid>
 
       {/* بطاقات المدفوعات (بيانات حقيقية من جدول payments) */}
@@ -227,7 +210,6 @@ export default function Dashboard() {
       </SimpleGrid>
 
       {/* الرسوم البيانية */}
-      <SimpleGrid columns={{ base: 1, xl: 3 }} spacing={5}>
         <Box gridColumn={{ xl: 'span 2' }} bg="white" borderRadius="2xl" p={5} border="1px solid" borderColor="ink.200" boxShadow="card">
           <Text fontFamily="heading" fontWeight="700" color="ink.900" mb={1}>المدفوعات الشهرية</Text>
           <Text fontSize="xs" color="ink.400" mb={2}>تطوّر التحصيل خلال السنة {year}</Text>
@@ -240,12 +222,7 @@ export default function Dashboard() {
           )}
         </Box>
 
-        <Box bg="white" borderRadius="2xl" p={5} border="1px solid" borderColor="ink.200" boxShadow="card">
-          <Text fontFamily="heading" fontWeight="700" color="ink.900" mb={1}>توزيع التلاميذ</Text>
-          <Text fontSize="xs" color="ink.400" mb={2}>حسب الجنس</Text>
-          <GenderChart data={gendersStatus} />
-        </Box>
-      </SimpleGrid>
+        
 
       <Box bg="white" borderRadius="2xl" p={5} border="1px solid" borderColor="ink.200" boxShadow="card">
         <Text fontFamily="heading" fontWeight="700" color="ink.900" mb={1}>التلاميذ حسب المستوى</Text>
@@ -327,32 +304,22 @@ export default function Dashboard() {
             <Thead>
               <Tr>
                 <Th>المستوى</Th>
-                <Th isNumeric>التعريفة الشهرية</Th>
-                <Th isNumeric>التعريفة السنوية</Th>
+                <Th isNumeric>التعريفة </Th>
               </Tr>
             </Thead>
             <Tbody>
-              {tuitionFees?.monthly?.map((monthlyFee) => {
-                const yearlyFee = tuitionFees.yearly.find(
-                  (fee) => fee.label === monthlyFee.label
-                );
-
+              {tuitionFees?.map((fee) => {
                 return (
-                  <Tr key={monthlyFee.id}>
+                  <Tr key={fee.id}>
                     <Td fontWeight="500" color="ink.800">
-                      {monthlyFee.label}
+                      {fee?.label}
                     </Td>
 
                     <Td isNumeric fontWeight="600" color="ink.900">
-                      {monthlyFee.amount.toLocaleString('fr-FR')} د.ت
+                      {fee?.amount?.toLocaleString('fr-FR')} د.ت
                     </Td>
 
-                    <Td isNumeric fontWeight="600" color="ink.900">
-                      {yearlyFee
-                        ? yearlyFee.amount.toLocaleString('fr-FR')
-                        : '-'}{' '}
-                      {yearlyFee && 'د.ت'}
-                    </Td>
+                   
                   </Tr>
                 );
               })}

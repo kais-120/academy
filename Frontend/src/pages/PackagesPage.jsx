@@ -75,19 +75,19 @@ const sxSelectRtl = {
 
 const EMPTY_PACKAGE = {
   name: '',
-  shoba: '',
-  price: '',
-  matieres: [],
+  section: '',
+  amount: '',
+  subjects: [],
 };
 
 const packageSchema = Yup.object({
   name: Yup.string().trim().required('اسم الباقة مطلوب.'),
-  shoba: Yup.string().trim().required('الشعبة مطلوبة.'),
-  price: Yup.number()
+  section: Yup.string().trim().required('الشعبة مطلوبة.'),
+  amount: Yup.number()
     .typeError('السعر يجب أن يكون رقمًا.')
     .min(0, 'السعر لا يمكن أن يكون سالبًا.')
     .required('السعر مطلوب.'),
-  matieres: Yup.array().of(Yup.string()).min(1, 'اختر مادة واحدة على الأقل.'),
+  subjects: Yup.array().of(Yup.string()).min(1, 'اختر مادة واحدة على الأقل.'),
 });
 
 export default function PackagesPage() {
@@ -226,20 +226,20 @@ export default function PackagesPage() {
                   <Td fontWeight="600">{pkg.name}</Td>
                   <Td>
                     <Badge borderRadius="full" px={2.5} bg="ink.100" color="ink.700">
-                      {pkg.shoba}
+                      {pkg.section}
                     </Badge>
                   </Td>
                   <Td>
                     <Badge colorScheme="purple" borderRadius="full" px={2.5}>
-                      {pkg.price} د.ت
+                      {pkg.amount} د.ت
                     </Badge>
                   </Td>
                   <Td>
                     <Wrap spacing={1}>
-                      {(pkg.matieres ?? []).map((m) => (
-                        <WrapItem key={m}>
+                      {(pkg.packageSubject ?? []).map((s) => (
+                        <WrapItem key={s.id}>
                           <Badge fontSize="0.65rem" borderRadius="full" px={2} bg="ink.100" color="ink.700">
-                            {m}
+                            {s.name}
                           </Badge>
                         </WrapItem>
                       ))}
@@ -282,9 +282,11 @@ export default function PackagesPage() {
               editingPackage
                 ? {
                     name: editingPackage.name ?? '',
-                    shoba: editingPackage.shoba ?? '',
-                    price: editingPackage.price ?? '',
-                    matieres: editingPackage.matieres ?? [],
+                    section: editingPackage.section ?? '',
+                    amount: editingPackage.amount ?? '',
+                    // packageSubject = [{ id, name, ... }] → نحتاج أسماء المواد فقط (strings)
+                    // لأن CheckboxGroup يقارن القيم مع value={m} (نص).
+                    subjects: (editingPackage.packageSubject ?? []).map((s) => s.name),
                   }
                 : EMPTY_PACKAGE
             }
@@ -294,12 +296,12 @@ export default function PackagesPage() {
           >
             {({ values, errors, touched, handleChange, handleSubmit: formikSubmit, setFieldValue }) => {
   const handleShobaChange = (e) => {
-    const shoba = e.target.value;
-    setFieldValue('shoba', shoba);
-    setFieldValue('matieres', MATIERES_BY_SHOBA[shoba] ?? []);
+    const section = e.target.value;
+    setFieldValue('section', section);
+    setFieldValue('subjects', MATIERES_BY_SHOBA[section] ?? []);
   };
 
-  const shobaMatieres = values.shoba ? MATIERES_BY_SHOBA[values.shoba] ?? [] : [];
+  const shobaMatieres = values.section ? MATIERES_BY_SHOBA[values.section] ?? [] : [];
 
   return (
     <Form>
@@ -316,12 +318,12 @@ export default function PackagesPage() {
             <FormErrorMessage>{errors.name}</FormErrorMessage>
           </FormControl>
 
-          <FormControl isInvalid={touched.shoba && errors.shoba} isRequired>
+          <FormControl isInvalid={touched.section && errors.section} isRequired>
             <FormLabel fontSize="sm">الشعبة</FormLabel>
             <Select
-              name="shoba"
+              name="section"
               placeholder="اختر الشعبة"
-              value={values.shoba}
+              value={values.section}
               onChange={handleShobaChange}
               sx={sxSelectRtl}
             >
@@ -329,28 +331,28 @@ export default function PackagesPage() {
                 <option key={s} value={s}>{s}</option>
               ))}
             </Select>
-            <FormErrorMessage>{errors.shoba}</FormErrorMessage>
+            <FormErrorMessage>{errors.section}</FormErrorMessage>
           </FormControl>
 
-          <FormControl isInvalid={touched.price && errors.price} isRequired>
+          <FormControl isInvalid={touched.amount && errors.amount} isRequired>
             <FormLabel fontSize="sm">السعر (د.ت)</FormLabel>
             <NumberInput
-              value={values.price}
-              onChange={(val) => setFieldValue('price', val)}
+              value={values.amount}
+              onChange={(val) => setFieldValue('amount', val)}
               min={0}
             >
               <NumberInputField placeholder="950" />
             </NumberInput>
-            <FormErrorMessage>{errors.price}</FormErrorMessage>
+            <FormErrorMessage>{errors.amount}</FormErrorMessage>
           </FormControl>
 
           {/* المواد تظهر فقط بعد اختيار الشعبة، وتعرض مواد تلك الشعبة فقط */}
-          {values.shoba && (
-            <FormControl isInvalid={touched.matieres && errors.matieres} isRequired>
-              <FormLabel fontSize="sm">المواد — {values.shoba}</FormLabel>
+          {values.section && (
+            <FormControl isInvalid={touched.subjects && errors.subjects} isRequired>
+              <FormLabel fontSize="sm">المواد — {values.section}</FormLabel>
               <CheckboxGroup
-                value={values.matieres}
-                onChange={(vals) => setFieldValue('matieres', vals)}
+                value={values.subjects}
+                onChange={(vals) => setFieldValue('subjects', vals)}
               >
                 <Wrap spacing={3}>
                   {shobaMatieres.map((m) => (
@@ -360,7 +362,7 @@ export default function PackagesPage() {
                   ))}
                 </Wrap>
               </CheckboxGroup>
-              <FormErrorMessage>{errors.matieres}</FormErrorMessage>
+              <FormErrorMessage>{errors.subjects}</FormErrorMessage>
             </FormControl>
           )}
         </VStack>

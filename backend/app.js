@@ -12,6 +12,8 @@ const PurchaseRouter = require("./routers/PurchaseRouter")
 const SchoolInfoRouter = require("./routers/SchoolInfoRouter")
 const DownloadRouter = require("./routers/DownloadRouter")
 const activityLogRoutes = require("./routers/activityLogRoutes");
+const PackageRoutes = require("./routers/PackageRoutes");
+
 const AuthenticateToken = require("./middlewares/AuthenticateToken");
 
 router.use("/auth",AuthRouter)
@@ -26,5 +28,7 @@ router.use("/purchase",AuthenticateToken,PurchaseRouter)
 router.use("/school-info",SchoolInfoRouter)
 router.use("/download",DownloadRouter)
 router.use("/activity-logs", activityLogRoutes);
+router.use("/package",AuthenticateToken,PackageRoutes)
+
 
 module.exports = router

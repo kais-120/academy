@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SimpleGrid,
   FormControl,
@@ -14,8 +14,9 @@ import {
   WrapItem,
   Badge,
   HStack,
-  VStack,
   Icon,
+  Spinner,
+  Center,
 } from '@chakra-ui/react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Formik, Form } from 'formik';
@@ -23,43 +24,7 @@ import * as Yup from 'yup';
 
 import FormModal from '../common/FormModal';
 import { paiements } from '../../data/school';
-
-// ---------------------------------------------------------------------------
-// شعب الباكالوريا — مواد + معلوم تسجيل (بيانات وهمية مؤقتة)
-// ---------------------------------------------------------------------------
-
-const BAC_TRACKS = [
-  {
-    key: 'علوم تجريبية',
-    price: 850,
-    matieres: ['الرياضيات', 'الفيزياء', 'علوم الحياة والأرض', 'العربية', 'الفرنسية', 'الإنجليزية', 'الإعلامية', 'الفلسفة'],
-  },
-  {
-    key: 'رياضيات',
-    price: 950,
-    matieres: ['الرياضيات', 'الفيزياء', 'علوم الحياة والأرض', 'العربية', 'الفرنسية', 'الإنجليزية', 'الإعلامية', 'الفلسفة'],
-  },
-  {
-    key: 'تكنولوجية',
-    price: 880,
-    matieres: ['الرياضيات', 'الفيزياء', 'التكنولوجيا / العلوم التقنية', 'الإعلامية', 'العربية', 'الفرنسية', 'الإنجليزية', 'الفلسفة'],
-  },
-  {
-    key: 'إعلامية',
-    price: 900,
-    matieres: ['الرياضيات', 'الخوارزميات والبرمجة', 'الإعلامية / TIC', 'الفيزياء', 'العربية', 'الفرنسية', 'الإنجليزية', 'الفلسفة'],
-  },
-  {
-    key: 'اقتصاد وتصرف',
-    price: 750,
-    matieres: ['الاقتصاد', 'التصرف', 'الرياضيات', 'التاريخ والجغرافيا', 'الإعلامية', 'العربية', 'الفرنسية', 'الإنجليزية', 'الفلسفة'],
-  },
-  {
-    key: 'آداب',
-    price: 700,
-    matieres: ['العربية', 'الفلسفة', 'التاريخ والجغرافيا', 'الفرنسية', 'الإنجليزية', 'الإعلامية'],
-  },
-];
+import { AxiosToken } from '../../api/Api';
 
 const sxSelectRtl = {
   textAlign: 'right', paddingRight: '1rem', paddingLeft: '2rem',
@@ -67,7 +32,7 @@ const sxSelectRtl = {
 };
 
 const EMPTY_FORM = {
-  track: '',
+  track: '', // = package id
   name: '',
   last_name: '',
   father_name: '',
@@ -95,7 +60,6 @@ const bacStudentSchema = Yup.object({
     .matches(/^\d[\d\s]{6,}$/, 'رقم هاتف الأم غير صالح.')
     .nullable(),
 
-  payment_type: Yup.string().trim().required('طريقة الدفع مطلوبة.'),
 });
 
 export default function BacStudentFormModal({
@@ -104,8 +68,10 @@ export default function BacStudentFormModal({
   onSubmit,
   isSaving = false,
 }) {
-  // step: 'select' -> اختيار الشعبة | 'form' -> بيانات التلميذ
+  // step: 'select' -> اختيار الباقة | 'form' -> بيانات التلميذ
   const [step, setStep] = useState('select');
+  const [packages, setPackages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleModalClose = (resetForm) => {
     setStep('select'); // reset the wizard for next time it's opened
@@ -113,18 +79,36 @@ export default function BacStudentFormModal({
     onClose();
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await AxiosToken.get('/package');
+        setPackages(response.data.packages ?? response.data.package ?? response.data ?? []);
+      } catch (err) {
+        console.error('error fetching packages', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const findPackage = (id) => packages.find((p) => String(p.id) === String(id));
+
   return (
     <Formik
       initialValues={EMPTY_FORM}
       validationSchema={bacStudentSchema}
       onSubmit={(values, helpers) => {
-        const trackData = BAC_TRACKS.find((t) => t.key === values.track);
+        const pkg = findPackage(values.track);
         onSubmit(
           {
             ...values,
-            classe: `باكالوريا - ${values.track}`,
-            matieres: trackData?.matieres ?? [],
-            price: trackData?.price ?? 0,
+            package_id: pkg?.id,
+            classe: `باكالوريا - ${pkg?.section ?? ''}`,
+            matieres: (pkg?.packageSubject ?? []).map((s) => s.name),
+            price: Number(pkg?.amount ?? 0),
           },
           helpers
         );
@@ -141,7 +125,7 @@ export default function BacStudentFormModal({
         setTouched,
         resetForm,
       }) => {
-        const selectedTrack = BAC_TRACKS.find((t) => t.key === values.track);
+        const selectedPackage = findPackage(values.track);
 
         const handleNext = () => {
           if (!values.track) return;
@@ -167,8 +151,8 @@ export default function BacStudentFormModal({
             onClose={() => handleModalClose(resetForm)}
             title={
               step === 'select'
-                ? 'تسجيل تلميذ — اختر الشعبة'
-                : `تسجيل تلميذ — ${selectedTrack?.key} (${selectedTrack?.price} د.ت)`
+                ? 'تسجيل تلميذ — اختر الباقة'
+                : `تسجيل تلميذ — ${selectedPackage?.name ?? ''} (${Number(selectedPackage?.amount ?? 0)} د.ت)`
             }
             size="2xl"
             footer={
@@ -206,48 +190,60 @@ export default function BacStudentFormModal({
           >
             <Form id="bac-student-form" dir="rtl">
               {step === 'select' ? (
-                // ---------- الخطوة 1: اختيار الشعبة عبر Cards ----------
+                // ---------- الخطوة 1: اختيار الباقة عبر Cards ----------
                 <Box>
-                  <Text fontWeight="600" mb={3}>اختر الشعبة</Text>
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={3}>
-                    {BAC_TRACKS.map((t) => {
-                      const isSelected = values.track === t.key;
-                      return (
-                        <Box
-                          key={t.key}
-                          onClick={() => setFieldValue('track', t.key)}
-                          cursor="pointer"
-                          borderWidth="2px"
-                          borderColor={isSelected ? 'purple.400' : 'ink.200'}
-                          bg={isSelected ? 'purple.50' : 'white'}
-                          borderRadius="lg"
-                          px={4}
-                          py={3}
-                          transition="all 0.15s"
-                          _hover={{ borderColor: 'purple.300' }}
-                        >
-                          <HStack justify="space-between" mb={2}>
-                            <Heading size="sm">{t.key}</Heading>
-                            {isSelected && <Icon as={CheckCircle2} color="purple.500" boxSize={5} />}
-                          </HStack>
+                  <Text fontWeight="600" mb={3}>اختر الباقة</Text>
 
-                          <Wrap spacing={1} mb={2}>
-                            {t.matieres.map((m) => (
-                              <WrapItem key={m}>
-                                <Badge fontSize="0.65rem" borderRadius="full" px={2} bg="ink.100" color="ink.700">
-                                  {m}
-                                </Badge>
-                              </WrapItem>
-                            ))}
-                          </Wrap>
+                  {isLoading ? (
+                    <Center py={8}>
+                      <Spinner color="purple.500" />
+                    </Center>
+                  ) : packages.length === 0 ? (
+                    <Text color="ink.500">لا توجد باقات.</Text>
+                  ) : (
+                    <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={3}>
+                      {packages.map((t) => {
+                        const isSelected = String(values.track) === String(t.id);
+                        return (
+                          <Box
+                            key={t.id}
+                            onClick={() => setFieldValue('track', String(t.id))}
+                            cursor="pointer"
+                            borderWidth="2px"
+                            borderColor={isSelected ? 'purple.400' : 'ink.200'}
+                            bg={isSelected ? 'purple.50' : 'white'}
+                            borderRadius="lg"
+                            px={4}
+                            py={3}
+                            transition="all 0.15s"
+                            _hover={{ borderColor: 'purple.300' }}
+                          >
+                            <HStack justify="space-between" mb={1}>
+                              <Heading size="sm">{t.name}</Heading>
+                              {isSelected && <Icon as={CheckCircle2} color="purple.500" boxSize={5} />}
+                            </HStack>
 
-                          <Text fontSize="sm" fontWeight="700" color="purple.600">
-                            {t.price} د.ت
-                          </Text>
-                        </Box>
-                      );
-                    })}
-                  </SimpleGrid>
+                            <Text fontSize="xs" color="ink.500" mb={2}>{t.section}</Text>
+
+                            <Wrap spacing={1} mb={2}>
+                              {(t.packageSubject ?? []).map((m) => (
+                                <WrapItem key={m.id}>
+                                  <Badge fontSize="0.65rem" borderRadius="full" px={2} bg="ink.100" color="ink.700">
+                                    {m.name}
+                                  </Badge>
+                                </WrapItem>
+                              ))}
+                            </Wrap>
+
+                            <Text fontSize="sm" fontWeight="700" color="purple.600">
+                              {Number(t.amount)} د.ت
+                            </Text>
+                          </Box>
+                        );
+                      })}
+                    </SimpleGrid>
+                  )}
+
                   {touched.track && errors.track && (
                     <Text color="red.500" fontSize="sm" mt={2}>{errors.track}</Text>
                   )}
@@ -290,27 +286,7 @@ export default function BacStudentFormModal({
                     <FormErrorMessage>{errors.mother_phone}</FormErrorMessage>
                   </FormControl>
 
-        
-
-    
-
-            
-
-                  <FormControl isInvalid={touched.payment_type && errors.payment_type} isRequired>
-                    <FormLabel fontSize="sm">طريقة الدفع</FormLabel>
-                    <Select
-                      name="payment_type"
-                      placeholder="اختر طريقة الدفع"
-                      value={values.payment_type}
-                      onChange={handleChange}
-                      sx={sxSelectRtl}
-                    >
-                      {paiements.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </Select>
-                    <FormErrorMessage>{errors.payment_type}</FormErrorMessage>
-                  </FormControl>
+                  
 
                 </SimpleGrid>
               )}
