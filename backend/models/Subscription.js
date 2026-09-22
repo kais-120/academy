@@ -16,6 +16,10 @@ const Subscription  = sequelize.define("subscriptions",{
         type:DataTypes.ENUM("payé","en attente","non payé"),
         defaultValue:"payé"
     },
+    is_offer: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
     student_id:{
         type:DataTypes.BIGINT,
         references:{

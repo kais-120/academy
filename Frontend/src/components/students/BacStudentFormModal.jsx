@@ -32,17 +32,13 @@ const sxSelectRtl = {
 };
 
 const EMPTY_FORM = {
-  track: '', // = package id
+  track: '',
   name: '',
   last_name: '',
-  father_name: '',
-  mother_name: '',
-  father_phone: '',
-  mother_phone: '',
-  gender: 'ولد',
-  birthday: '',
-  address: '',
-  payment_type: '',
+  phone: '',
+  stage: 'ثانوي',
+  level: 'باكالوريا',
+  section: '',
 };
 
 const bacStudentSchema = Yup.object({
@@ -50,16 +46,10 @@ const bacStudentSchema = Yup.object({
 
   name: Yup.string().trim().required('الاسم مطلوب.'),
   last_name: Yup.string().trim().required('اللقب مطلوب.'),
-  father_name: Yup.string().trim(),
-  mother_name: Yup.string().trim(),
 
-  father_phone: Yup.string()
-    .matches(/^\d[\d\s]{6,}$/, 'رقم هاتف الأب غير صالح.')
-    .nullable(),
-  mother_phone: Yup.string()
-    .matches(/^\d[\d\s]{6,}$/, 'رقم هاتف الأم غير صالح.')
-    .nullable(),
-
+  phone: Yup.string()
+    .matches(/^\d[\d\s]{7}$/, 'رقم هاتف  غير صالح.')
+    .required('رقم الهاتف مطلوب.'),
 });
 
 export default function BacStudentFormModal({
@@ -68,13 +58,12 @@ export default function BacStudentFormModal({
   onSubmit,
   isSaving = false,
 }) {
-  // step: 'select' -> اختيار الباقة | 'form' -> بيانات التلميذ
   const [step, setStep] = useState('select');
   const [packages, setPackages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleModalClose = (resetForm) => {
-    setStep('select'); // reset the wizard for next time it's opened
+    setStep('select');
     resetForm();
     onClose();
   };
@@ -100,18 +89,25 @@ export default function BacStudentFormModal({
     <Formik
       initialValues={EMPTY_FORM}
       validationSchema={bacStudentSchema}
-      onSubmit={(values, helpers) => {
+      onSubmit={async (values, helpers) => {
         const pkg = findPackage(values.track);
-        onSubmit(
-          {
-            ...values,
-            package_id: pkg?.id,
-            classe: `باكالوريا - ${pkg?.section ?? ''}`,
-            matieres: (pkg?.packageSubject ?? []).map((s) => s.name),
-            price: Number(pkg?.amount ?? 0),
-          },
-          helpers
-        );
+        try {
+          await onSubmit(
+            {
+              ...values,
+               level: 'باكالوريا',
+              package_id: pkg?.id,
+              section: pkg?.section ?? '',
+              matieres: (pkg?.packageSubject ?? []).map((s) => s.name),
+              price: Number(pkg?.amount ?? 0),
+            },
+            helpers
+          );
+
+          setStep('select');
+        } finally {
+          helpers.setSubmitting(false);
+        }
       }}
     >
       {({
@@ -133,17 +129,6 @@ export default function BacStudentFormModal({
         };
 
         const handleBack = () => setStep('select');
-
-        const handleSubmitClick = async () => {
-          const validationErrors = await validateForm();
-          if (Object.keys(validationErrors).length > 0) {
-            setTouched(
-              Object.keys(validationErrors).reduce((acc, key) => ({ ...acc, [key]: true }), {})
-            );
-            return;
-          }
-          handleSubmit();
-        };
 
         return (
           <FormModal
@@ -178,7 +163,19 @@ export default function BacStudentFormModal({
                   <Button
                     flex={1}
                     colorScheme="green"
-                    onClick={handleSubmitClick}
+                    onClick={async () => {
+                      const validationErrors = await validateForm();
+                      if (Object.keys(validationErrors).length > 0) {
+                        setTouched(
+                          Object.keys(validationErrors).reduce((acc, key) => {
+                            acc[key] = true;
+                            return acc;
+                          }, {})
+                        );
+                        return;
+                      }
+                      handleSubmit();
+                    }}
                     isLoading={isSaving}
                     loadingText="حفظ…"
                   >
@@ -190,7 +187,6 @@ export default function BacStudentFormModal({
           >
             <Form id="bac-student-form" dir="rtl">
               {step === 'select' ? (
-                // ---------- الخطوة 1: اختيار الباقة عبر Cards ----------
                 <Box>
                   <Text fontWeight="600" mb={3}>اختر الباقة</Text>
 
@@ -249,9 +245,7 @@ export default function BacStudentFormModal({
                   )}
                 </Box>
               ) : (
-                // ---------- الخطوة 2: بيانات التلميذ الشخصية فقط ----------
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-
                   <FormControl isInvalid={touched.name && errors.name} isRequired>
                     <FormLabel fontSize="sm">الاسم</FormLabel>
                     <Input name="name" value={values.name} onChange={handleChange} placeholder="محمد" />
@@ -264,30 +258,13 @@ export default function BacStudentFormModal({
                     <FormErrorMessage>{errors.last_name}</FormErrorMessage>
                   </FormControl>
 
-                  <FormControl>
-                    <FormLabel fontSize="sm">اسم الأب</FormLabel>
-                    <Input name="father_name" value={values.father_name} onChange={handleChange} placeholder="كريم علي" />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm">اسم الأم</FormLabel>
-                    <Input name="mother_name" value={values.mother_name} onChange={handleChange} placeholder="أمل التونسي" />
-                  </FormControl>
-
-                  <FormControl isInvalid={touched.father_phone && errors.father_phone}>
-                    <FormLabel fontSize="sm">رقم هاتف الأب</FormLabel>
-                    <Input name="father_phone" value={values.father_phone} onChange={handleChange} placeholder="632 145 20" />
-                    <FormErrorMessage>{errors.father_phone}</FormErrorMessage>
-                  </FormControl>
-
-                  <FormControl isInvalid={touched.mother_phone && errors.mother_phone}>
-                    <FormLabel fontSize="sm">رقم هاتف الأم</FormLabel>
-                    <Input name="mother_phone" value={values.mother_phone} onChange={handleChange} placeholder="411 987 22" />
-                    <FormErrorMessage>{errors.mother_phone}</FormErrorMessage>
+                  <FormControl isInvalid={touched.phone && errors.phone}>
+                    <FormLabel fontSize="sm">رقم هاتف </FormLabel>
+                    <Input name="phone" value={values.phone} onChange={handleChange} placeholder="632 145 20" />
+                    <FormErrorMessage>{errors.phone}</FormErrorMessage>
                   </FormControl>
 
                   
-
                 </SimpleGrid>
               )}
             </Form>

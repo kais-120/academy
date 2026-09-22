@@ -2,7 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const Users = require("./Users");
 
-const ActivityLog = sequelize.define("activity-log", {
+const ActivityLog = sequelize.define("activity_log", {
     id: {
         type: DataTypes.BIGINT,
         autoIncrement: true,

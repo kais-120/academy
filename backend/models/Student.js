@@ -24,6 +24,9 @@ const Student  = sequelize.define("students",{
     },
     mother_phone:{
         type:DataTypes.STRING,
+    },
+    phone:{
+        type:DataTypes.STRING,
     },   
     class:{
         type:DataTypes.STRING,

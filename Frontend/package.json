@@ -13,6 +13,7 @@
     "@chakra-ui/react": "2.10.4",
     "@emotion/react": "11.13.5",
     "@emotion/styled": "11.13.5",
+    "@tanstack/react-query": "^5.103.2",
     "axios": "^1.7.9",
     "formik": "^2.4.9",
     "framer-motion": "11.15.0",

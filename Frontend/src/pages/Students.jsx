@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -21,30 +21,22 @@ import {
   ModalFooter,
   FormControl,
   FormLabel,
-  FormErrorMessage,
   Input,
-  Alert,
-  AlertIcon,
 } from '@chakra-ui/react';
-import { Plus, Eye, Pencil, Trash2, Download, Users, RefreshCcw, FileText, FileSpreadsheet, Gift, CheckCircle2, XCircle, UserPlus } from 'lucide-react';
+import { Plus, Eye, Pencil, Trash2, Download, Users, RefreshCcw, FileText, FileSpreadsheet, Gift, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader';
 import SearchBar from '../components/common/SearchBar';
 import DataTable from '../components/common/DataTable';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import StudentFormModal from '../components/students/StudentFormModal';
 import StudentViewModal from '../components/students/StudentViewModal';
-import { students as initialStudents } from '../data/students';
 import { levels } from '../data/school';
 import { AxiosToken } from '../api/Api';
 import BacStudentFormModal from '../components/students/BacStudentFormModal';
 
 
-function formatDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('fr-FR');
-}
-
-
+const PAGE_SIZE = 8;
 
 // تحويل رمز العرض إلى نص واضح للمستخدم داخل نموذج التلميذ
 function getPromotionLabel(promotion) {
@@ -53,102 +45,126 @@ function getPromotionLabel(promotion) {
   return null;
 }
 
+// جلب التلاميذ من الباك اند مع البحث والفلترة والصفحات
+async function fetchStudents({ queryKey }) {
+  const [, { page, search, levelFilter, genderFilter }] = queryKey;
+  const response = await AxiosToken.get('/student', {
+    params: {
+      page,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+      level: levelFilter || undefined,
+      gender: genderFilter || undefined,
+    },
+  });
+  return response.data;
+}
+
 export default function Students() {
   const toast = useToast();
-  const [students, setStudents] = useState([]);
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [studentToReenroll, setStudentToReenroll] = useState(null);
   const [reenrollStatus, setReenrollStatus] = useState('');
 
-
   const [exportLevel, setExportLevel] = useState('');
   const [uniqueIsError, setUniqueIsError] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-
-
-  // --- عروض (offres selon nombre d'enfants) ---
   const [fatherName, setFatherName] = useState('');
   const [siblingsCount, setSiblingsCount] = useState('');
   const [offerErrors, setOfferErrors] = useState({});
-  const [isApplyingOffer, setIsApplyingOffer] = useState(false);
-// جلسة إضافة التلاميذ ضمن العرض
-const [offerSession, setOfferSession] = useState(null);
-  // العرض الجاري تطبيقه عند إضافة تلميذ جديد من نافذة العروض
+  const [offerSession, setOfferSession] = useState(null);
   const [pendingOffer, setPendingOffer] = useState(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [yearAcademy, setYearAcademy] = useState("");
+  const [isReenrolling, setIsReenrolling] = useState(false);
+  const [yearAcademy, setYearAcademy] = useState('');
 
   const formModal = useDisclosure();
   const viewModal = useDisclosure();
   const deleteDialog = useDisclosure();
   const exportModal = useDisclosure();
   const offersModal = useDisclosure();
+  const reenrollModal = useDisclosure();
 
   const today = new Date();
-const year = today.getFullYear();
+  const year = today.getFullYear();
+  const startDate = new Date(year, 9, 1); // September 1
+  const endDate = new Date(year, 9, 30); // September 30
+  const isDisabled = today >= startDate && today <= endDate;
 
-const startDate = new Date(year, 9, 1);  // September 1
-const endDate = new Date(year, 9, 30);   // September 30
+  // debounce البحث حتى لا نرسل طلب مع كل ضغطة مفتاح
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-const isDisabled = today >= startDate && today <= endDate;
+  // نرجع لأول صفحة كلما تغيّر البحث أو الفلاتر
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, levelFilter, genderFilter]);
+
+  const studentsQueryKey = [
+    'students',
+    { page, search: debouncedSearch, levelFilter, genderFilter },
+  ];
+
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+  } = useQuery({
+    queryKey: studentsQueryKey,
+    queryFn: fetchStudents,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const students = data?.students ?? [];
+  const pagination = data?.pagination ?? { total: 0, page: 1, totalPages: 1 };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true)
-        const response = await AxiosToken.get("/student");
-        setStudents(response.data.students)
-      } catch {
-        console.error("error")
-      }
-      finally{
-        setIsLoading(false)
-      }
+    if (isError) {
+      toast({
+        title: 'حدث خطأ أثناء جلب قائمة التلاميذ',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
-    fetchData()
-  }, [isSaving, isDeleting])
+  }, [isError, toast]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSchoolInfo = async () => {
       try {
-        setIsLoading(true)
-        const response = await AxiosToken.get("/school-info");
-         if (response.data?.schoolInfo) {
-            setYearAcademy(response.data.schoolInfo?.[0]?.academic_year);
+        const response = await AxiosToken.get('/school-info');
+        if (response.data?.schoolInfo) {
+          setYearAcademy(response.data.schoolInfo?.[0]?.academic_year);
         }
       } catch {
-        console.error("error")
+        console.error('error');
       }
-      finally{
-        setIsLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
+    };
+    fetchSchoolInfo();
+  }, []);
 
-  const filteredStudents = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return students.filter((s) => {
-      const matchesSearch =
-        !term ||
-        `${s.name} ${s.last_name} ${s.address}`.toLowerCase().includes(term);
-      const matchesLevel = !levelFilter || s.class === levelFilter;
-      const matchesGender = !genderFilter || s.gender === genderFilter;
-      return matchesSearch && matchesLevel && matchesGender;
-    })
-      .map((p, idx) => ({ ...p, displayNumber: idx + 1 }));
+  const displayedStudents = useMemo(
+    () => students.map((s, idx) => ({ ...s, displayNumber: (page - 1) * PAGE_SIZE + idx + 1 })),
+    [students, page]
+  );
 
-  }, [students, search, levelFilter, genderFilter]);
+  const invalidateStudents = () => queryClient.invalidateQueries({ queryKey: ['students'] });
 
   const openAddModal = () => {
     setSelectedStudent(null);
@@ -181,102 +197,91 @@ const isDisabled = today >= startDate && today <= endDate;
     setFatherName('');
     setSiblingsCount('');
     setOfferErrors({});
-     setOfferSession(null);
+    setOfferSession(null);
     offersModal.onOpen();
   };
 
-
-
   const handleSubmit = async (formData, { resetForm }) => {
-  setIsSaving(true);
-  setUniqueIsError(false);
+    setIsSaving(true);
+    setUniqueIsError(false);
 
-  const payload = pendingOffer
-    ? {
-        ...formData,
-        father_name: pendingOffer.fatherName,
-        siblings_count: pendingOffer.position,
-        promotion: pendingOffer.isLast ? pendingOffer.promotion : null,
+    try {
+      let savedStudent = null;
+
+      if (selectedStudent) {
+        await AxiosToken.put(`/student/${selectedStudent.id}`, formData);
+        toast({
+          title: 'تم تعديل التلميذ بنجاح',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        const response = await AxiosToken.post('/student', formData);
+        savedStudent = response?.data?.student || response?.data || null;
+        toast({
+          title: pendingOffer
+            ? 'تم إضافة التلميذ بنجاح ضمن العرض'
+            : 'تم إضافة التلميذ بنجاح',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
       }
-    : formData;
 
-  try {
-    let savedStudent = null;
+      resetForm();
+      formModal.onClose();
+      setSelectedStudent(null);
+      invalidateStudents();
 
-    if (selectedStudent) {
-      await AxiosToken.put(`/student/${selectedStudent.id}`, payload);
+      if (pendingOffer) {
+        const newEntry = {
+          id: savedStudent?.id ?? `${Date.now()}`,
+          name: savedStudent?.name ?? formData.name,
+          last_name: savedStudent?.last_name ?? formData.last_name,
+          classe: savedStudent?.class ?? formData.classe,
+          promotionApplied: pendingOffer.isLast,
+        };
+
+        setOfferSession((prev) =>
+          prev ? { ...prev, addedStudents: [...prev.addedStudents, newEntry] } : prev
+        );
+        setPendingOffer(null);
+        offersModal.onOpen();
+      } else {
+        setPendingOffer(null);
+      }
+    } catch (error) {
+      if (error.response?.status) {
+        setUniqueIsError(true);
+      }
       toast({
-        title: 'تم تعديل التلميذ بنجاح',
-        status: 'success',
+        title: 'حدث خطأ أثناء حفظ بيانات التلميذ',
+        status: 'error',
         duration: 3000,
         isClosable: true,
       });
-    } else {
-      const response = await AxiosToken.post('/student', payload);
-      savedStudent = response?.data?.student || response?.data || null;
-      toast({
-        title: pendingOffer
-          ? 'تم إضافة التلميذ بنجاح ضمن العرض'
-          : 'تم إضافة التلميذ بنجاح',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
 
-    resetForm();
-    formModal.onClose();
-    setSelectedStudent(null);
-
-    if (pendingOffer) {
-      const newEntry = {
-        id: savedStudent?.id ?? `${Date.now()}`,
-        name: savedStudent?.name ?? formData.name,
-        last_name: savedStudent?.last_name ?? formData.last_name,
-        classe: savedStudent?.class ?? formData.classe,
-        promotionApplied: pendingOffer.isLast,
-      };
-
-      setOfferSession((prev) =>
-        prev ? { ...prev, addedStudents: [...prev.addedStudents, newEntry] } : prev
-      );
-      setPendingOffer(null);
-      offersModal.onOpen(); // نعود لنافذة العروض لعرض الـ card الجديدة
-    } else {
-      setPendingOffer(null);
+      if (pendingOffer) {
+        setPendingOffer(null);
+        offersModal.onOpen();
+      }
+    } finally {
+      setIsSaving(false);
     }
-  } catch (error) {
-    if (error.response?.status) {
-      setUniqueIsError(true);
-    }
-    toast({
-      title: 'حدث خطأ أثناء حفظ بيانات التلميذ',
-      status: 'error',
-      duration: 3000,
-      isClosable: true,
-    });
-
-    // إن فشلت الإضافة ضمن جلسة عرض، نعيد فتح نافذة العروض بدل تركها معلقة
-    if (pendingOffer) {
-      setPendingOffer(null);
-      offersModal.onOpen();
-    }
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await AxiosToken.delete(`/student/${studentToDelete.id}`)
+      await AxiosToken.delete(`/student/${studentToDelete.id}`);
       toast({
         title: 'تم حذف التلميذ بنجاح',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
-
+      invalidateStudents();
     } catch {
       toast({
         title: 'حدث خطأ أثناء حذف التلميذ',
@@ -295,7 +300,6 @@ const isDisabled = today >= startDate && today <= endDate;
     if (!reenrollStatus) return;
     setIsReenrolling(true);
     try {
-      // Adapte ce endpoint à celui de ton backend si nécessaire
       await AxiosToken.post(`/student/${studentToReenroll.id}/reenroll`, {
         type: reenrollStatus,
       });
@@ -308,6 +312,7 @@ const isDisabled = today >= startDate && today <= endDate;
         duration: 3000,
         isClosable: true,
       });
+      invalidateStudents();
     } catch {
       toast({
         title: 'حدث خطأ أثناء إعادة تسجيل التلميذ',
@@ -323,112 +328,83 @@ const isDisabled = today >= startDate && today <= endDate;
     }
   };
 
-  const downloadBlob = (blob, filename) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
- const handleExport = async (format) => {
-  try {
-    setIsExporting(true);
-
-    const response = await AxiosToken.get("/download/students", {
-      params: {
-        format,
-        level: exportLevel,
-      },
-      responseType: "blob",
-    });
-
-    const blob = new Blob([response.data], {
-      type:
-        format === "pdf"
-          ? "application/pdf"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `students${exportLevel ? `-${exportLevel}` : ""}.${format === "pdf" ? "pdf" : "xlsx"}`;
-
-    document.body.appendChild(link);
-    link.click();
-
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    exportModal.onClose();
-  } catch (error) {
-    console.error("Export error:", error);
-
-    toast({
-      title: "خطأ",
-      description: "حدث خطأ أثناء تحميل بيانات التلاميذ",
-      status: "error",
-      duration: 3000,
-      isClosable: true,
-    });
-  } finally {
-    setIsExporting(false);
-  }
-};
-
-  const validateOfferForm = () => {
-    const next = {};
-    if (!fatherName.trim()) next.fatherName = 'اسم الأب مطلوب.';
-    if (!siblingsCount) next.siblingsCount = 'يرجى اختيار عدد الإخوة.';
-    setOfferErrors(next);
-    return Object.keys(next).length === 0;
-  };
-
-  const handleApplyOffer = async () => {
-    if (!validateOfferForm()) return;
-
-    setIsApplyingOffer(true);
+  const handleExport = async (format) => {
     try {
-      // Adapte ce endpoint à celui de ton backend si nécessaire
-      await AxiosToken.post('/promotions', {
-        fatherName: fatherName.trim(),
-        childrenCount: Number(siblingsCount),
+      setIsExporting(true);
+
+      const response = await AxiosToken.get('/download/students', {
+        params: {
+          format,
+          level: exportLevel,
+        },
+        responseType: 'blob',
       });
-      toast({
-        title: 'تم تسجيل العرض بنجاح',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
+
+      const blob = new Blob([response.data], {
+        type:
+          format === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      offersModal.onClose();
-      setFatherName('');
-      setSiblingsCount('');
-      setOfferErrors({});
-    } catch {
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `students${exportLevel ? `-${exportLevel}` : ''}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      exportModal.onClose();
+    } catch (error) {
+      console.error('Export error:', error);
+
       toast({
-        title: 'حدث خطأ أثناء تسجيل العرض',
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء تحميل بيانات التلاميذ',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
     } finally {
-      setIsApplyingOffer(false);
+      setIsExporting(false);
     }
   };
 
+  const handleBacSubmit = async (formData, { resetForm }) => {
+    try {
+      setIsSaving(true);
+      await AxiosToken.post('/student/offer', formData);
+      toast({
+        title: 'تم إضافة التلميذ بنجاح ضمن العرض',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      offersModal.onClose();
+      resetForm();
+      invalidateStudents();
+    } catch {
+      toast({
+        title: 'حدث خطأ أثناء حفظ بيانات التلميذ',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const columns = [
-    { ket: "displayNumber", label: '#', sortable: false, render: (row) => row.displayNumber },
+    { key: 'displayNumber', label: '#', sortable: false, render: (row) => row.displayNumber },
     { key: 'name', label: 'الاسم', sortable: true },
     { key: 'last_name', label: 'اللقب', sortable: true },
     { key: 'stage', label: 'المرحلة', sortable: true },
-    { key: 'section', label: 'الشعبة', sortable: true },
-   
     {
       key: 'level',
       label: 'الاقسام',
@@ -439,20 +415,17 @@ const isDisabled = today >= startDate && today <= endDate;
         </Badge>
       ),
     },
+    { key: 'section', label: 'الشعبة', sortable: true },
   ];
 
-
   return (
-    <Box dir='rtl' >
+    <Box dir="rtl">
       <PageHeader
         title="التلاميذ"
         subtitle={
           <>
-            <span dir="ltr">{students.length}</span>
-            {' '}
-           الطلاب المسجلين
-            {' '}
-            <span dir="ltr">{yearAcademy || "-"}</span>
+            <span dir="ltr">{pagination.total}</span> الطلاب المسجلين{' '}
+            <span dir="ltr">{yearAcademy || '-'}</span>
           </>
         }
         actions={
@@ -482,7 +455,7 @@ const isDisabled = today >= startDate && today <= endDate;
         }
       />
 
-      <Wrap spacing={3} mb={5} align="center" dir='rtl'>
+      <Wrap spacing={3} mb={5} align="center" dir="rtl">
         <SearchBar value={search} onChange={setSearch} placeholder="ابحث بالاسم، أو اللقب، أو الموقع..." />
 
         <Select
@@ -491,7 +464,7 @@ const isDisabled = today >= startDate && today <= endDate;
           borderRadius="lg"
           bg="white"
           borderColor="ink.200"
-          dir='rtl'
+          dir="rtl"
           value={levelFilter}
           onChange={(e) => setLevelFilter(e.target.value)}
           sx={{
@@ -511,7 +484,7 @@ const isDisabled = today >= startDate && today <= endDate;
         </Select>
 
         <Select
-          dir='rtl'
+          dir="rtl"
           w={{ base: 'full', sm: '190px' }}
           size="sm"
           borderRadius="lg"
@@ -538,7 +511,11 @@ const isDisabled = today >= startDate && today <= endDate;
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => { setSearch(''); setLevelFilter(''); setGenderFilter(''); }}
+            onClick={() => {
+              setSearch('');
+              setLevelFilter('');
+              setGenderFilter('');
+            }}
           >
             إعادة ضبط
           </Button>
@@ -546,14 +523,13 @@ const isDisabled = today >= startDate && today <= endDate;
 
         <HStack spacing={1.5} ml="auto" color="ink.400">
           <Users size={15} />
-          <Text fontSize="xs">{filteredStudents.length} نتيجة</Text>
+          <Text fontSize="xs">{pagination.total} نتيجة</Text>
         </HStack>
       </Wrap>
 
       <DataTable
         columns={columns}
-        data={filteredStudents}
-        pageSize={8}
+        data={displayedStudents}
         isLoading={isLoading}
         emptyMessage="لا يوجد طالب يستوفي هذه المعايير."
         renderActions={(row) => (
@@ -591,12 +567,36 @@ const isDisabled = today >= startDate && today <= endDate;
         )}
       />
 
+      {/* ترقيم الصفحات على مستوى الباك اند */}
+      {pagination.totalPages > 1 && (
+        <HStack justify="center" spacing={4} mt={4} dir="ltr">
+          <IconButton
+            aria-label="السابق"
+            icon={<ChevronLeft size={16} />}
+            size="sm"
+            variant="outline"
+            isDisabled={page <= 1 || isFetching}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          />
+          <Text fontSize="sm" color="ink.500">
+            {page} / {pagination.totalPages}
+          </Text>
+          <IconButton
+            aria-label="التالي"
+            icon={<ChevronRight size={16} />}
+            size="sm"
+            variant="outline"
+            isDisabled={page >= pagination.totalPages || isFetching}
+            onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
+          />
+        </HStack>
+      )}
+
       <StudentFormModal
         isOpen={formModal.isOpen}
         onClose={() => {
           formModal.onClose();
           setPendingOffer(null);
-          // si l'utilisateur ferme sans valider en pleine session, on rouvre les offres
           if (offerSession) offersModal.onOpen();
         }}
         onSubmit={handleSubmit}
@@ -633,6 +633,29 @@ const isDisabled = today >= startDate && today <= endDate;
         }
       />
 
+      <Modal isOpen={reenrollModal.isOpen} onClose={reenrollModal.onClose} isCentered dir="rtl">
+        <ModalOverlay />
+        <ModalContent dir="rtl">
+          <ModalHeader>إعادة تسجيل التلميذ</ModalHeader>
+          <ModalCloseButton insetInlineStart={3} insetInlineEnd="auto" />
+          <ModalBody>
+            <FormControl>
+              <FormLabel fontSize="sm">نتيجة التلميذ</FormLabel>
+              <Select dir="rtl" value={reenrollStatus} onChange={(e) => setReenrollStatus(e.target.value)}>
+                <option value="">اختر النتيجة</option>
+                <option value="ناجح">ناجح</option>
+                <option value="راسب">راسب</option>
+              </Select>
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="brand" isLoading={isReenrolling} isDisabled={!reenrollStatus} onClick={handleReenroll}>
+              تأكيد
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       <Modal isOpen={exportModal.isOpen} onClose={exportModal.onClose} isCentered dir="rtl">
         <ModalOverlay />
         <ModalContent dir="rtl">
@@ -647,15 +670,14 @@ const isDisabled = today >= startDate && today <= endDate;
                   value={exportLevel}
                   onChange={(e) => setExportLevel(e.target.value)}
                   sx={{
-          textAlign: 'right',
-          paddingRight: '1rem',
-          paddingLeft: '2rem',
-          '& + div': {
-            insetInlineEnd: 'auto',
-            insetInlineStart: '0.5rem',
-          },
-        }}
-
+                    textAlign: 'right',
+                    paddingRight: '1rem',
+                    paddingLeft: '2rem',
+                    '& + div': {
+                      insetInlineEnd: 'auto',
+                      insetInlineStart: '0.5rem',
+                    },
+                  }}
                 >
                   <option value="">جميع المستويات</option>
                   {levels.map((lvl) => (
@@ -685,16 +707,14 @@ const isDisabled = today >= startDate && today <= endDate;
                 isLoading={isExporting}
                 onClick={() => handleExport('excel')}
               >
-              تحميل Excel
+                تحميل Excel
               </Button>
             </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      <BacStudentFormModal isOpen={offersModal.isOpen} onClose={offersModal.onClose} />
-
-
+      <BacStudentFormModal isOpen={offersModal.isOpen} onClose={offersModal.onClose} onSubmit={handleBacSubmit} />
     </Box>
   );
 }

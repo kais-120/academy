@@ -3,6 +3,7 @@ const Package = require("./Package");
 const PackageSubject = require("./packageSubject");
 const Scoring = require("./Scoring");
 const Student = require("./Student");
+const StudentPackage = require("./StudentPackage");
 const Subject = require("./Subject");
 const Subscription = require("./Subscription");
 const Teacher = require("./Teacher");
@@ -63,4 +64,26 @@ PackageSubject.belongsTo(Package, {
     foreignKey: "package_id",
     as: "package" 
 });
-module.exports = {Teacher,Subject,Scoring,Student,Subscription,TeacherPayment,User,ActivityLog,Package,PackageSubject}
+
+Student.hasMany(StudentPackage, {
+    foreignKey: "student_id",
+    as:"studentPackage"
+});
+StudentPackage.belongsTo(Student, {
+    foreignKey: "student_id",
+    as: "packageStudent" 
+});
+
+Package.hasMany(StudentPackage, {
+    foreignKey: "package_id",
+    as:"studentPackages"
+});
+StudentPackage.belongsTo(Package, {
+    foreignKey: "package_id",
+    as: "packageStudentPackage" 
+});
+
+
+module.exports = {Teacher,Subject,Scoring,Student,Subscription,TeacherPayment,User,ActivityLog,Package,PackageSubject,
+                    StudentPackage
+                }
