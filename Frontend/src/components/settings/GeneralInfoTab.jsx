@@ -11,13 +11,12 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { Save } from 'lucide-react';
-import { schoolInfo as initialSchoolInfo } from '../../data/school';
 import { AxiosToken } from '../../api/Api';
 
 export default function GeneralInfoTab() {
   const toast = useToast();
 
-  const [form, setForm] = useState(initialSchoolInfo);
+  const [form, setForm] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 

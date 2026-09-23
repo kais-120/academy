@@ -108,6 +108,7 @@ const EMPTY_FORM = {
   mother_name: '',
   father_phone: '',
   mother_phone: '',
+  phone:'',
   stage: '',
   level: '',
   section: '',
@@ -131,15 +132,22 @@ const studentSchema = Yup.object({
 
   father_phone: Yup.string()
     .matches(
-      /^\d[\d\s]{6,}$/,
+      /^\d[\d\s]{7}$/,
       'رقم هاتف الأب غير صالح.'
     )
     .nullable(),
 
   mother_phone: Yup.string()
     .matches(
-      /^\d[\d\s]{6,}$/,
+      /^\d[\d\s]{7}$/,
       'رقم هاتف الأم غير صالح.'
+    )
+    .nullable(),
+
+    phone: Yup.string()
+    .matches(
+      /^\d[\d\s]{7}$/,
+      'رقم هاتف  غير صالح.'
     )
     .nullable(),
 
@@ -296,6 +304,13 @@ export default function StudentFormModal({
                   <Input dir="rtl" name="mother_phone" value={values.mother_phone} onChange={handleChange} placeholder="411 987 22" />
                   <FormErrorMessage>{errors.mother_phone}</FormErrorMessage>
                 </FormControl>
+
+                 <FormControl isInvalid={touched.phone && errors.phone}>
+                      <FormLabel fontSize="sm">رقم هاتف </FormLabel>
+                      <Input name="phone" value={values.phone} onChange={handleChange} placeholder="632 145 20" />
+                      <FormErrorMessage>{errors.phone}</FormErrorMessage>
+                  </FormControl>
+                
 
                 {/* المرحلة (stage) */}
                 <FormControl isInvalid={touched.stage && errors.stage} isRequired>

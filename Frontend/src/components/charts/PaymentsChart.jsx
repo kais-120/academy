@@ -44,7 +44,7 @@ export default function PaymentsChart({ data }) {
           />
           <Area
             type="monotone"
-            dataKey="montant"
+            dataKey="total"
             stroke="#1B4B8F"
             strokeWidth={2.5}
             fill="url(#paymentsGradient)"

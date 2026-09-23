@@ -6,6 +6,7 @@ const { Op, fn, col, where } = require("sequelize");
 const ActivityLog = require("../models/ActivityLog");
 const User = require("../models/Users");
 const StudentSubject = require("../models/StudentSubject");
+const Payment = require("../models/Payment");
 const getUser = async (req) => {
   const userId = req.userId;
   const user = await User.findByPk(userId);
@@ -63,6 +64,7 @@ exports.createStudent = [
         level,
         stage,
         section,
+        phone,
         materials,
       } = req.body;
 
@@ -87,12 +89,18 @@ exports.createStudent = [
         mother_phone,
         level,
         section,
+        phone,
         stage,
       });
-      await Subscription.create({
+      const subscription = await Subscription.create({
         amount: totalAmount,
         student_id: student.id,
       });
+      await Payment.create({
+        amount:totalAmount,
+        status:"payé",
+        subscription_id:subscription.id
+      })
 
       for (const material of materials) {
         await StudentSubject.create({
@@ -133,7 +141,6 @@ exports.getAllStudents = async (req, res) => {
       limit = 8,
       search = "",
       level = "",
-      gender = "",
     } = req.query;
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
@@ -141,9 +148,9 @@ exports.getAllStudents = async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const whereClause = { is_deleted: false };
+    console.log(level)
 
-    if (level) whereClause.class = level;
-    if (gender) whereClause.gender = gender;
+    if (level) whereClause.level = level;
 
     const andConditions = [];
 
@@ -155,6 +162,8 @@ exports.getAllStudents = async (req, res) => {
             col("students.name"),
             " ",
             col("students.last_name"),
+            " ",
+            col("students.level"),
           ),
           { [Op.like]: `%${search.trim()}%` },
         ),

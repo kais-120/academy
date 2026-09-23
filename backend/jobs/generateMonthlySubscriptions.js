@@ -4,10 +4,10 @@ const Student = require("../models/Student");
 const Subscription = require("../models/Subscription");
 const JobLog = require("../models/JobLog");
 const Price = require("../models/TuitionFee");
-const Zone = require("../models/Zone");
+const SchoolBreak = require("../models/SchoolBreak");
+const { Op } = require("sequelize");
 
 const JOB_NAME = "generate_monthly_subscriptions";
-const MONTHLY_PLAN = "يدفع شهريًا";
 
 function currentPeriod(date = new Date()) {
     // billing cycle is 1st -> 1st, so the period is just the current month
@@ -16,9 +16,22 @@ function currentPeriod(date = new Date()) {
     return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
-function isSchoolMonth(date = new Date()) {
-    const m = date.getMonth(); // 0=Jan ... 11=Dec
-    return m !== 6 && m !== 7; // skip July(6) and August(7)
+function todayISO(date = new Date()) {
+    return date.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+}
+
+// Is `date` inside any school_break row (summer or exceptional)?
+async function isInBreak(date = new Date()) {
+    const day = todayISO(date);
+
+    const activeBreak = await SchoolBreak.findOne({
+        where: {
+            start_date: { [Op.lte]: day },
+            end_date: { [Op.gte]: day },
+        },
+    });
+
+    return activeBreak || null;
 }
 
 async function hasRunThisMonth(period = currentPeriod()) {
@@ -26,34 +39,22 @@ async function hasRunThisMonth(period = currentPeriod()) {
     return !!log;
 }
 
-// Same math as calculatePrice's "normalMonthPrice" branch for the monthly plan,
-// but built from pre-fetched maps instead of hitting the DB per student.
-function normalMonthPriceFromCache({ classe, zone_id }, priceByClass, zoneById) {
+// Price is just label -> amount, keyed by the student's class label.
+function normalMonthPriceFromCache({ classe }, priceByClass) {
     const price = priceByClass.get(classe);
     if (!price) {
-        throw new Error(`no monthly Price row for class "${classe}"`);
+        throw new Error(`no Price row for class "${classe}"`);
     }
 
-    let zoneAmount = 0;
-    if (zone_id) {
-        const zone = zoneById.get(zone_id);
-        if (!zone) {
-            throw new Error(`zone ${zone_id} not found`);
-        }
-        zoneAmount = parseFloat(zone.amount);
-    }
-
-    const baseAmount = parseFloat(price.amount) + zoneAmount;
-    const normalMonthPrice = baseAmount; // monthly plan, no addition on recurring months
-
-    return normalMonthPrice;
+    return parseFloat(price.amount);
 }
 
 async function runMonthlySubscriptionJob() {
     const period = currentPeriod();
 
-    if (!isSchoolMonth()) {
-        console.log(`[${JOB_NAME}] outside school year (Jul/Aug), skipping ${period}`);
+    const activeBreak = await isInBreak();
+    if (activeBreak) {
+        console.log(`[${JOB_NAME}] inside break "${activeBreak.label}" (${activeBreak.type}), skipping ${period}`);
         return;
     }
 
@@ -69,11 +70,10 @@ async function runMonthlySubscriptionJob() {
     }
 
     // Now safe — only one process can ever reach this point per period.
-    const [students, allSubscriptions, monthlyPrices, zones] = await Promise.all([
+    const [students, allSubscriptions, prices] = await Promise.all([
         Student.findAll(),
         Subscription.findAll({ order: [["createdAt", "DESC"]] }),
-        Price.findAll({ where: { type: "monthly" } }),
-        Zone.findAll(),
+        Price.findAll(),
     ]);
 
     const lastSubscriptionByStudent = new Map();
@@ -83,8 +83,7 @@ async function runMonthlySubscriptionJob() {
         }
     }
 
-    const priceByClass = new Map(monthlyPrices.map(p => [p.label, p]));
-    const zoneById = new Map(zones.map(z => [z.id, z]));
+    const priceByClass = new Map(prices.map(p => [p.label, p]));
 
     let created = 0;
     let skipped = 0;
@@ -97,19 +96,17 @@ async function runMonthlySubscriptionJob() {
             continue;
         }
 
-        if (lastSubscription.payment_type !== MONTHLY_PLAN) {
+        // Offered students don't get a new subscription generated for them.
+        if (lastSubscription.is_offer) {
+            skipped++;
             continue;
         }
 
         let normalMonthPrice;
         try {
             normalMonthPrice = normalMonthPriceFromCache(
-                {
-                    classe: student.class,
-                    zone_id: lastSubscription.zone_id,
-                },
-                priceByClass,
-                zoneById
+                { classe: student.class },
+                priceByClass
             );
         } catch (err) {
             console.error(`[${JOB_NAME}] pricing failed for student ${student.id} (${student.class}):`, err.message);
@@ -119,13 +116,9 @@ async function runMonthlySubscriptionJob() {
 
         await Subscription.create({
             amount: normalMonthPrice,
-            transport: !!lastSubscription.transport,
-            payment_type: MONTHLY_PLAN,
             status: "non payé",
+            is_offer: false,
             student_id: student.id,
-            zone_id: lastSubscription.zone_id || null,
-            is_take_book: lastSubscription.is_take_book,
-            is_take_uniform: lastSubscription.is_take_uniform,
         });
 
         created++;
@@ -153,5 +146,6 @@ module.exports = {
     startMonthlySubscriptionJob,
     hasRunThisMonth,
     currentPeriod,
+    isInBreak,
     JOB_NAME
 };

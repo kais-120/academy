@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-const Student = require("./Student");
+const Subscription = require("./Subscription");
 
 const Payment  = sequelize.define("payments",{
     id:{
@@ -16,14 +16,13 @@ const Payment  = sequelize.define("payments",{
     },
     date:{
         type:DataTypes.DATE,
+        defaultValue:DataTypes.NOW
     },
-    justification:{
-        type:DataTypes.BOOLEAN,
-    },
-    student_id:{
+    
+    subscription_id:{
         type:DataTypes.BIGINT,
         references:{
-            model:Student,
+            model:Subscription,
             key:"id"
         }
     },

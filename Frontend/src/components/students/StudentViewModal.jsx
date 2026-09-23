@@ -14,6 +14,9 @@ import {
   HStack,
   Badge,
   Divider,
+  Wrap,
+  WrapItem,
+  Box,
 } from '@chakra-ui/react';
 
 function Field({ label, value }) {
@@ -25,34 +28,25 @@ function Field({ label, value }) {
   );
 }
 
-function SubBadge({ ok, label }) {
+function StatusBadge({ status }) {
+  const map = {
+    'payé': { bg: 'green.50', color: 'green.700', label: 'مدفوع' },
+    'en attente': { bg: 'orange.50', color: 'orange.700', label: 'في الانتظار' },
+    'non payé': { bg: 'red.50', color: 'red.700', label: 'غير مدفوع' },
+  };
+  const cfg = map[status] || { bg: 'ink.50', color: 'ink.600', label: status || '—' };
   return (
-    <Badge
-      bg={ok ? 'green.50' : 'red.50'}
-      color={ok ? 'green.700' : 'red.700'}
-      borderRadius="full"
-      px={2.5}
-      py={1}
-      fontSize="11px"
-    >
-      {ok ? '✓' : '✕'} {label}
+    <Badge bg={cfg.bg} color={cfg.color} borderRadius="full" px={2.5} py={1} fontSize="11px">
+      {cfg.label}
     </Badge>
   );
 }
 
-const PROMOTION_LABELS = {
-  discount_50: 'تخفيض ٪50',
-  free: 'مجاني',
-};
-
 export default function StudentViewModal({ isOpen, onClose, student, onEdit }) {
   if (!student) return null;
-  console.log(student.birthday)
-  const age = student.birthday
-    ? Math.floor((Date.now() - new Date(student.birthday).getTime()) / (365.25 * 24 * 3600 * 1000))
-    : null;
 
   const subscription = student.subscription;
+  const packages = student.studentPackage || [];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered>
@@ -65,13 +59,20 @@ export default function StudentViewModal({ isOpen, onClose, student, onEdit }) {
               <Text fontFamily="heading" fontWeight="700" color="ink.900">
                 {student.name} {student.last_name}
               </Text>
-              <HStack spacing={2}>
-                <Badge bg="brand.50" color="brand.700" borderRadius="full" px={2} fontSize="10px">
-                  {student.classe}
-                </Badge>
-                {student.unique_id && (
+              <HStack spacing={2} wrap="wrap">
+                {student.stage && (
+                  <Badge bg="brand.50" color="brand.700" borderRadius="full" px={2} fontSize="10px">
+                    {student.stage}
+                  </Badge>
+                )}
+                {student.level && (
                   <Badge bg="ink.50" color="ink.600" borderRadius="full" px={2} fontSize="10px">
-                    #{student.unique_id}
+                    {student.level}
+                  </Badge>
+                )}
+                {student.section && (
+                  <Badge bg="ink.50" color="ink.600" borderRadius="full" px={2} fontSize="10px">
+                    {student.section}
                   </Badge>
                 )}
               </HStack>
@@ -79,15 +80,15 @@ export default function StudentViewModal({ isOpen, onClose, student, onEdit }) {
           </HStack>
         </ModalHeader>
         <ModalCloseButton
-        insetInlineStart="3"
-        insetInlineEnd="auto"
-      />
+          insetInlineStart="3"
+          insetInlineEnd="auto"
+        />
         <ModalBody py={5}>
           <SimpleGrid columns={2} spacing={5}>
-            <Field label="الجنس" value={student.gender} />
-            <Field  label="عمر" value={age ? `سنوات ${age}` : '—'} />
-            <Field label="تاريخ الميلاد" value={student.birthday} />
-            <Field label="موقع" value={student.address} />
+            <Field label="الهاتف" value={student.phone} />
+            <Field label="المرحلة" value={student.stage} />
+            <Field label="المستوى" value={student.level} />
+            <Field label="الشعبة" value={student.section} />
           </SimpleGrid>
 
           <Divider my={4} borderColor="ink.100" />
@@ -99,7 +100,7 @@ export default function StudentViewModal({ isOpen, onClose, student, onEdit }) {
             <Field label="اسم الأب" value={student.father_name} />
             <Field label="اسم الأم" value={student.mother_name} />
             <Field label="هاتف الأب" value={student.father_phone} />
-            <Field label="رقم هاتف الأم" value={student.mother_phone} />
+            <Field label="هاتف الأم" value={student.mother_phone} />
           </SimpleGrid>
 
           <Divider my={4} borderColor="ink.100" />
@@ -110,24 +111,58 @@ export default function StudentViewModal({ isOpen, onClose, student, onEdit }) {
           {subscription ? (
             <VStack align="flex-start" spacing={3}>
               <HStack spacing={2} wrap="wrap">
-                <SubBadge ok={subscription.transport} label="النقل" />
-                <SubBadge ok={subscription.is_take_uniform} label="الزي المدرسي" />
-                <SubBadge ok={subscription.is_take_book} label="الكتب" />
+                <StatusBadge status={subscription.status} />
+                {subscription.is_offer && (
+                  <Badge bg="purple.50" color="purple.700" borderRadius="full" px={2.5} py={1} fontSize="11px">
+                    عرض خاص
+                  </Badge>
+                )}
               </HStack>
               <SimpleGrid columns={2} spacing={5}>
-                {subscription.transport && (
-                  <Field label="المنطقة" value={subscription.zone} />
-                )}
-                <Field label="نوع الدفع" value={subscription.payment_type} />
-                <Field
-                  label="تخفيض"
-                  value={subscription.promotion ? (PROMOTION_LABELS[subscription.promotion] || subscription.promotion) : null}
-                />
-                <Field label="عدد الإخوة" value={subscription.siblings_count} />
+                <Field label="المبلغ" value={subscription.amount != null ? `${subscription.amount} د.ت` : null} />
               </SimpleGrid>
             </VStack>
           ) : (
             <Text fontSize="sm" color="ink.400">لا يوجد اشتراك</Text>
+          )}
+
+          <Divider my={4} borderColor="ink.100" />
+
+          <Text fontSize="xs" fontWeight="700" color="ink.500" mb={3} textTransform="uppercase" letterSpacing="wide">
+            الباقة الدراسية
+          </Text>
+          {packages.length > 0 ? (
+            <VStack align="stretch" spacing={4}>
+              {packages.map((sp) => {
+                const pkg = sp.packageStudentPackage;
+                if (!pkg) return null;
+                return (
+                  <Box key={sp.id} p={3} borderRadius="xl" bg="ink.50">
+                    <HStack justify="space-between" mb={2}>
+                      <Text fontSize="sm" fontWeight="700" color="ink.900">
+                        {pkg.name} {pkg.section ? `— ${pkg.section}` : ''}
+                      </Text>
+                      <Text fontSize="sm" fontWeight="600" color="brand.700">
+                        {pkg.amount} د.ت
+                      </Text>
+                    </HStack>
+                    {pkg.packageSubject?.length > 0 && (
+                      <Wrap spacing={2}>
+                        {pkg.packageSubject.map((subj) => (
+                          <WrapItem key={subj.id}>
+                            <Badge bg="white" color="ink.700" borderRadius="full" px={2.5} py={1} fontSize="11px">
+                              {subj.name}
+                            </Badge>
+                          </WrapItem>
+                        ))}
+                      </Wrap>
+                    )}
+                  </Box>
+                );
+              })}
+            </VStack>
+          ) : (
+            <Text fontSize="sm" color="ink.400">لا توجد باقة دراسية</Text>
           )}
         </ModalBody>
         <ModalFooter borderTop="1px solid" borderColor="ink.100" gap={2}>

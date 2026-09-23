@@ -35,12 +35,12 @@ exports.getStudentsByLevel = async (req, res) => {
   try {
     const rows = await Student.findAll({
       where:{is_deleted:false},
-      attributes: ['class', [fn('COUNT', col('class')), 'count']],
-      group: ['class'],
+      attributes: ['level', [fn('COUNT', col('level')), 'count']],
+      group: ['level'],
       raw: true,
     });
     const studentsByLevel = rows.map((r) => ({
-      level: r.class,
+      level: r.level,
       count: Number(r.count),
     }));
     return res.status(200).json({ studentsByLevel });
@@ -62,8 +62,8 @@ exports.getPaymentsThisMonth = async (req, res) => {
 
     const [totalResult, collectedResult, pendingResult] = await Promise.all([
       Payment.sum('amount', { where: whereThisMonth }),
-      Payment.sum('amount', { where: { ...whereThisMonth, status: 'paid' } }),
-      Payment.sum('amount', { where: { ...whereThisMonth, status: 'pending' } }),
+      Payment.sum('amount', { where: { ...whereThisMonth, status: 'payé' } }),
+      Payment.sum('amount', { where: { ...whereThisMonth, status: 'non payé' } }),
     ]);
 
     const paymentsThisMonth = {
@@ -81,18 +81,23 @@ exports.getPaymentsThisMonth = async (req, res) => {
 
 exports.getMonthlyPayments = async (req, res) => {
   try {
+    const arabicMonths = [
+      'جانفي', 'فيفري', 'مارس', 'أفريل', 'ماي', 'جوان',
+      'جويلية', 'أوت', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+    ];
+
     const rows = await Payment.findAll({
       attributes: [
-        [fn('to_char', col('createdAt'), 'Mon'), 'month'],
+        [fn('EXTRACT', literal('MONTH FROM "createdAt"')), 'month'],
         [fn('SUM', col('amount')), 'total'],
       ],
-      group: [fn('to_char', col('createdAt'), 'Mon'), fn('EXTRACT', 'MONTH FROM createdAt' /* placeholder if needed */)],
-      order: [[fn('MIN', col('createdAt')), 'ASC']],
+      group: [fn('EXTRACT', literal('MONTH FROM "createdAt"'))],
+      order: [[fn('EXTRACT', literal('MONTH FROM "createdAt"')), 'ASC']],
       raw: true,
     });
 
     const monthlyPayments = rows.map((r) => ({
-      month: r.month,
+      month: arabicMonths[Number(r.month) - 1],
       total: Number(r.total),
     }));
 
@@ -101,7 +106,7 @@ exports.getMonthlyPayments = async (req, res) => {
     console.error('getMonthlyPayments error:', error);
     return res.status(500).json({ message: 'حدث خطأ أثناء جلب المدفوعات الشهرية' });
   }
-}
+};
 
 exports.getTuitionFees = async (req, res) => {
   try {
@@ -215,32 +220,6 @@ exports.getFinancialSummary = async(req, res) => {
     }
 }
 
-exports.getMonthlyPayments = async (req, res) => {
-  try {
-    const rows = await Payment.findAll({
-      attributes: [
-        [fn('to_char', col('createdAt'), 'Mon'), 'month'],
-        [fn('SUM', col('amount')), 'total'],
-      ],
-      group: [
-        fn('to_char', col('createdAt'), 'Mon'),
-        literal(`EXTRACT(MONTH FROM "createdAt")`),
-      ],
-      order: [[fn('MIN', col('createdAt')), 'ASC']],
-      raw: true,
-    });
-
-    const monthlyPayments = rows.map((r) => ({
-      month: r.month,
-      total: Number(r.total),
-    }));
-
-    return res.status(200).json({ monthlyPayments });
-  } catch (error) {
-    console.error('getMonthlyPayments error:', error);
-    return res.status(500).json({ message: 'حدث خطأ أثناء جلب المدفوعات الشهرية' });
-  }
-}
 
 exports.getPaymentsSummary = async (req, res) => {
   try {

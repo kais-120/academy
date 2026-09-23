@@ -24,7 +24,6 @@ import {
   Divider,
 } from '@chakra-ui/react';
 import { Wallet, CheckCircle2, Clock, CreditCard, History as HistoryIcon } from 'lucide-react';
-import { paymentStatuses } from '../../data/payments';
 import { levels } from '../../data/school';
 import PaymentsSubNav from './PaymentsSubNav';
 import DataTable from '../common/DataTable';
@@ -34,9 +33,17 @@ import PageHeader from '../common/PageHeader';
 
 const STATUS_COLORS = {
   payé: { bg: 'positive.50', color: 'positive.600' },
-  "no payé": { bg: 'accent.50', color: 'accent.500' },
+  "non payé": { bg: 'accent.50', color: 'accent.500' },
   'en attente': { bg: 'warning.50', color: 'warning.500' },
 };
+
+// الحالات المعروضة للفلترة والجدول — فقط مدفوع/غير مدفوع
+const STATUS_LABELS = {
+  'payé': 'مدفوع',
+  'non payé': 'غير مدفوع',
+};
+
+const FILTERABLE_STATUSES = Object.keys(STATUS_LABELS);
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -46,8 +53,7 @@ function formatDate(iso) {
 function formatMonthLabel(monthKey) {
   const [year, month] = monthKey.split('-');
   const d = new Date(Number(year), Number(month) - 1, 1);
-  const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  return d.toLocaleDateString('ar-TN-u-nu-latn', { month: 'long', year: 'numeric' });
 }
 
 export default function PaymentsEleves() {
@@ -170,7 +176,7 @@ export default function PaymentsEleves() {
   const columns = [
     { key: 'id', label: 'المعرّف', sortable: true },
     { key: 'eleve', label: 'الطالب', sortable: true, render: (row) => row.student.name + ' ' + row.student.last_name },
-    { key: 'class', label: 'المستوى', sortable: true, render: (row) => <Badge bg="ink.100" color="ink.700" borderRadius="full" px={2.5}>{row.student.class}</Badge> },
+    { key: 'level', label: 'المستوى', sortable: true, render: (row) => <Badge bg="ink.100" color="ink.700" borderRadius="full" px={2.5}>{row.student.level}</Badge> },
     { key: 'montant', label: 'المبلغ', sortable: true, isNumeric: true, render: (row) => `${row.amount?.toLocaleString('fr-FR')} د.ت` },
     { key: 'datePaiement', label: 'التاريخ', sortable: true, render: (row) => formatDate(row.createdAt) },
     {
@@ -178,28 +184,22 @@ export default function PaymentsEleves() {
       label: 'الحالة',
       sortable: true,
       render: (row) => {
-    const statusLabels = {
-        "payé": "مدفوع",
-        "no payé": "غير مدفوع",
-        "en attente": "قيد الانتظار",
-    };
+        const c = STATUS_COLORS[row.status] || {
+            bg: "ink.100",
+            color: "ink.700"
+        };
 
-    const c = STATUS_COLORS[row.status] || {
-        bg: "ink.100",
-        color: "ink.700"
-    };
-
-    return (
-        <Badge
-            bg={c.bg}
-            color={c.color}
-            borderRadius="full"
-            px={2.5}
-        >
-            {statusLabels[row.status] || row.status}
-        </Badge>
-    );
-},
+        return (
+            <Badge
+                bg={c.bg}
+                color={c.color}
+                borderRadius="full"
+                px={2.5}
+            >
+                {STATUS_LABELS[row.status] || row.status}
+            </Badge>
+        );
+      },
     },
   ];
 
@@ -290,8 +290,8 @@ export default function PaymentsEleves() {
           sx={{ textAlign: 'right', paddingRight: '1rem', paddingLeft: '2rem', '& + div': { insetInlineEnd: 'auto', insetInlineStart: '0.5rem' } }}
         >
           <option value="">جميع الحالات</option>
-          {paymentStatuses.map((s) => (
-            <option key={s} value={s}>{s}</option>
+          {FILTERABLE_STATUSES.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </Select>
 

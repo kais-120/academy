@@ -2,13 +2,7 @@ const { Student, Subscription, Zone } = require("../models");
 const ExcelJS = require("exceljs");
 const puppeteer = require("puppeteer");
 
-// Translate stored gender codes to Arabic display text if needed
-function genderLabel(g) {
-    if (g === "ولد" || g === "بنت") return g; // already Arabic
-    if (g === "male" || g === "M") return "ذكر";
-    if (g === "female" || g === "F") return "أنثى";
-    return g || "";
-}
+
 
 // Translate boolean values to Arabic Yes/No
 function boolLabel(v) {
@@ -72,7 +66,6 @@ function buildStudentsHtml({ students, level }) {
                     <td class="col-num">${index + 1}</td>
                     <td>${esc(student.last_name)}</td>
                     <td>${esc(student.name)}</td>
-                    <td class="col-center">${esc(genderLabel(student.gender))}</td>
                     <td class="col-center">${esc(birthday)}</td>
                     <td class="col-center">${esc(student.class)}</td>
                     <td class="col-center">${esc(phone)}</td>
@@ -269,7 +262,6 @@ async function buildStudentsExcel({ students, level }) {
             num: index + 1,
             last_name: student.last_name || "",
             name: student.name || "",
-            gender: genderLabel(student.gender),
             birthday,
             class: student.class || "",
             phone,

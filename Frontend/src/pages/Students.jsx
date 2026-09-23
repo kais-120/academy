@@ -31,7 +31,7 @@ import DataTable from '../components/common/DataTable';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import StudentFormModal from '../components/students/StudentFormModal';
 import StudentViewModal from '../components/students/StudentViewModal';
-import { levels } from '../data/school';
+import { STAGES, STAGE_LEVELS } from '../data/school';
 import { AxiosToken } from '../api/Api';
 import BacStudentFormModal from '../components/students/BacStudentFormModal';
 
@@ -415,7 +415,7 @@ export default function Students() {
         </Badge>
       ),
     },
-    { key: 'section', label: 'الشعبة', sortable: true },
+    { key: 'section', label: 'الشعبة', sortable: true,render:(row) => <Badge bg="ink.100" color="ink.700" borderRadius="full" px={2.5}>{row.section}</Badge> },
   ];
 
   return (
@@ -478,34 +478,15 @@ export default function Students() {
           }}
         >
           <option value="">جميع الاقسام </option>
-          {levels.map((lvl) => (
-            <option key={lvl} value={lvl}>{lvl}</option>
+          {STAGES.map((stage) => (
+            <optgroup key={stage} label={stage}>
+              {STAGE_LEVELS[stage].map((lvl) => (
+                <option key={lvl} value={lvl}>{lvl}</option>
+              ))}
+            </optgroup>
           ))}
         </Select>
 
-        <Select
-          dir="rtl"
-          w={{ base: 'full', sm: '190px' }}
-          size="sm"
-          borderRadius="lg"
-          bg="white"
-          borderColor="ink.200"
-          value={genderFilter}
-          onChange={(e) => setGenderFilter(e.target.value)}
-          sx={{
-            textAlign: 'right',
-            paddingRight: '1rem',
-            paddingLeft: '2rem',
-            '& + div': {
-              insetInlineEnd: 'auto',
-              insetInlineStart: '0.5rem',
-            },
-          }}
-        >
-          <option value="">كل الأجناس</option>
-          <option value="ولد">ولد</option>
-          <option value="بنت">بنت</option>
-        </Select>
 
         {(search || levelFilter || genderFilter) && (
           <Button
@@ -680,8 +661,12 @@ export default function Students() {
                   }}
                 >
                   <option value="">جميع المستويات</option>
-                  {levels.map((lvl) => (
-                    <option key={lvl} value={lvl}>{lvl}</option>
+                  {STAGES.map((stage) => (
+                    <optgroup key={stage} label={stage}>
+                      {STAGE_LEVELS[stage].map((lvl) => (
+                        <option key={lvl} value={lvl}>{lvl}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </Select>
               </FormControl>

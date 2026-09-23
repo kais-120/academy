@@ -7,7 +7,6 @@ import { FaChalkboardTeacher } from 'react-icons/fa';
 const CATEGORIES = [
   { label: 'التلاميذ', to: '/payments/eleves', icon: GraduationCap },
   { label: 'المعلمون', to: '/payments/maitres', icon: FaChalkboardTeacher },
-  { label: 'الموظفين/المشرفون', to: '/payments/employs', icon: Users },
   { label: 'المشتريات', to: '/payments/achats', icon: ShoppingCart },
   { label: 'المصاريف', to: '/payments/expenses', icon: HandCoins },
 ];

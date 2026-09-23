@@ -23,7 +23,6 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 
 import FormModal from '../common/FormModal';
-import { paiements } from '../../data/school';
 import { AxiosToken } from '../../api/Api';
 
 const sxSelectRtl = {

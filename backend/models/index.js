@@ -1,6 +1,7 @@
 const ActivityLog = require("./ActivityLog");
 const Package = require("./Package");
 const PackageSubject = require("./packageSubject");
+const Payment = require("./Payment");
 const Scoring = require("./Scoring");
 const Student = require("./Student");
 const StudentPackage = require("./StudentPackage");
@@ -35,6 +36,15 @@ Student.hasOne(Subscription,{
 Subscription.belongsTo(Student,{
     foreignKey:"student_id",
     as:"student"
+})
+
+Subscription.hasOne(Payment,{
+    foreignKey:"subscription_id",
+    as:"Payments"
+})
+Payment.belongsTo(Subscription,{
+    foreignKey:"student_id",
+    as:"subscriptionPayment"
 })
 
 
@@ -85,5 +95,5 @@ StudentPackage.belongsTo(Package, {
 
 
 module.exports = {Teacher,Subject,Scoring,Student,Subscription,TeacherPayment,User,ActivityLog,Package,PackageSubject,
-                    StudentPackage
+                    StudentPackage,Payment
                 }

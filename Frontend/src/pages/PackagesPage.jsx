@@ -52,6 +52,7 @@ import * as Yup from 'yup';
 import { useRef } from 'react';
 
 import { AxiosToken } from '../api/Api'; // عدّل المسار حسب مشروعك
+import PageHeader from '../components/common/PageHeader';
 
 // ---------------------------------------------------------------------------
 // شعب الباكالوريا + المواد الخاصة بكل شعبة
@@ -184,22 +185,18 @@ export default function PackagesPage() {
   };
 
   return (
-    <Container maxW="6xl" py={8} dir="rtl">
-      <HStack justify="space-between" mb={6}>
-        <VStack align="stretch" spacing={1}>
-          <HStack spacing={2}>
-            <Icon as={GraduationCap} boxSize={6} color="purple.500" />
-            <Heading size="lg">إدارة الباقات</Heading>
-          </HStack>
-          <Text color="ink.500" fontSize="sm">
-            إضافة وتعديل وحذف باقات التسجيل (الشعبة، المواد، السعر).
-          </Text>
-        </VStack>
-        <Button colorScheme="purple" leftIcon={<Plus size={16} />} onClick={openCreateModal}>
-          باقة جديدة
-        </Button>
-      </HStack>
-
+     <Box dir="rtl">
+         <PageHeader
+              title="الباقات"
+              subtitle={"الباقات المسجلة"}
+              actions={
+            
+                  <Button leftIcon={<Plus size={17} />} onClick={openCreateModal}>
+                    إضافة باقة
+                  </Button>
+                
+              }
+            />
       {loading ? (
         <Center py={16}>
           <Spinner size="lg" color="purple.500" />
@@ -416,6 +413,6 @@ export default function PackagesPage() {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
-    </Container>
+    </Box>
   );
 }

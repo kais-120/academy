@@ -36,16 +36,19 @@ import {
   UserCog,
   Eye,
   EyeOff,
+  Calendar,
 } from 'lucide-react';
 import PageHeader from '../components/common/PageHeader';
 import GeneralInfoTab from '../components/settings/GeneralInfoTab';
 import TuitionFeesTab from '../components/settings/TuitionFeesTab';
-import DaycareBooksFeesTab from '../components/settings/DaycareBooksFeesTab';
-import TransportFeesTab from '../components/settings/TransportFeesTab';
+import SchoolBreaksTab from '../components/settings/SchoolBreaksTab';
+
 
 const TABS = [
   { label: 'عام', icon: Building2, panel: GeneralInfoTab },
   { label: 'مصاريف الدراسة', icon: GraduationCap, panel: TuitionFeesTab },
+  { label: 'العطل وفترات التوقف', icon: Calendar, panel: SchoolBreaksTab },
+
 ];
 
 function getAuthSession() {
@@ -309,17 +312,6 @@ export default function Settings() {
           subtitle="معلومات المدرسة، المصاريف وإعدادات العرض."
         />
 
-        <Button
-          leftIcon={<UserCog size={16} />}
-          bg="brand.600"
-          color="white"
-          _hover={{ bg: 'brand.700' }}
-          borderRadius="lg"
-          onClick={onOpen}
-          flexShrink={0}
-        >
-          إدارة الملف الشخصي
-        </Button>
       </Flex>
 
       <Tabs variant="unstyled">

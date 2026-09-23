@@ -13,6 +13,10 @@ const SchoolInfoRouter = require("./routers/SchoolInfoRouter")
 const DownloadRouter = require("./routers/DownloadRouter")
 const activityLogRoutes = require("./routers/activityLogRoutes");
 const PackageRoutes = require("./routers/PackageRoutes");
+const SchoolYearRouter = require("./routers/SchoolYearRouter");
+const SchoolBreakRouter = require("./routers/SchoolBreakRouter");
+
+
 
 const AuthenticateToken = require("./middlewares/AuthenticateToken");
 
@@ -29,6 +33,11 @@ router.use("/school-info",SchoolInfoRouter)
 router.use("/download",DownloadRouter)
 router.use("/activity-logs", activityLogRoutes);
 router.use("/package",AuthenticateToken,PackageRoutes)
+router.use("/school-year",AuthenticateToken,SchoolYearRouter)
+router.use("/school-break",AuthenticateToken,SchoolBreakRouter)
+
+
+
 
 
 module.exports = router
