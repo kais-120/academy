@@ -102,6 +102,12 @@ async function runMonthlySubscriptionJob() {
             continue;
         }
 
+        // Student's last subscription is inactive (left, paused, etc.) — don't auto-renew.
+        if (!lastSubscription.is_active) {
+            skipped++;
+            continue;
+        }
+
         let normalMonthPrice;
         try {
             normalMonthPrice = normalMonthPriceFromCache(

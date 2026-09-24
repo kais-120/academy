@@ -146,8 +146,9 @@ exports.getDashboardSummary = async (req, res) => {
 
 
 function getPeriodRange(month, year) {
-    const end = new Date(year, month - 1, 20, 0, 0, 0, 0);       // 20th of given month
-    const start = new Date(year, month - 2, 20, 0, 0, 0, 0);      // 20th of previous month
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
+
     return { start, end };
 }
 
@@ -173,12 +174,6 @@ exports.getFinancialSummary = async(req, res) => {
             raw: true
         });
 
-        // المصاريف: رواتب الموظفين + رواتب الأساتذة + المشتريات
-        const staffExpenseResult = await StaffPayment.findOne({
-            attributes: [[fn("SUM", col("amount")), "total"]],
-            where: { ...dateFilter, status: "payé" },
-            raw: true
-        });
 
         const teacherExpenseResult = await db.TeacherPayment.findOne({
             attributes: [[fn("SUM", col("amount")), "total"]],
@@ -193,11 +188,10 @@ exports.getFinancialSummary = async(req, res) => {
         });
 
         const revenue = parseFloat(revenueResult.total) || 0;
-        const staffExpense = parseFloat(staffExpenseResult.total) || 0;
         const teacherExpense = parseFloat(teacherExpenseResult.total) || 0;
         const purchaseExpense = parseFloat(purchaseExpenseResult.total) || 0;
 
-        const totalExpenses = staffExpense + teacherExpense + purchaseExpense;
+        const totalExpenses =  teacherExpense + purchaseExpense;
         const netProfit = revenue - totalExpenses;
 
         return res.json({
@@ -207,7 +201,6 @@ exports.getFinancialSummary = async(req, res) => {
             },
             revenue,
             expenses: {
-                staff: staffExpense,
                 teachers: teacherExpense,
                 purchases: purchaseExpense,
                 total: totalExpenses

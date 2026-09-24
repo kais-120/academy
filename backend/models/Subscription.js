@@ -20,6 +20,14 @@ const Subscription  = sequelize.define("subscriptions",{
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
+    is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+    },
+    deactivated_by_break: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+},
     student_id:{
         type:DataTypes.BIGINT,
         references:{

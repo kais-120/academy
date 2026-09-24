@@ -1,25 +1,32 @@
 const cron = require("node-cron");
-const StaffSalary = require("../models/StaffSalary");
-const Employ = require("../models/Employ");
-const Supervisor = require("../models/Supervisor");
+const { Op } = require("sequelize");
 const Teacher = require("../models/Teacher");
 const TeacherPayment = require("../models/TeacherPayment");
 const JobLog = require("../models/JobLog");
+const SchoolBreak = require("../models/SchoolBreak");
 const { getPayPeriodForDateOnly } = require("../services/salaryService");
 
-const JOB_NAME = "generate_monthly_payments"; // renamed: now covers staff + teachers
+const JOB_NAME = "generate_monthly_payments";
 
-const STAFF_TYPES = [
-    { person_type: "employ", PersonModel: Employ },
-    { person_type: "supervisor", PersonModel: Supervisor },
-];
+function todayISO(date = new Date()) {
+    return date.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+}
 
-// Same Jul/Aug skip as generateMonthlySubscriptions.js — teachers aren't
-// paid hourly during the school break. Staff (employ/supervisor) still runs
-// year-round; adjust here if that should change.
-function isSchoolMonth(date = new Date()) {
-    const m = date.getMonth(); // 0=Jan ... 11=Dec
-    return m !== 6 && m !== 7; // skip July(6) and August(7)
+// Is `date` inside a summer break? (mirrors isInBreak() in
+// generateMonthlySubscriptions.js, but scoped to type: "summer" only —
+// teachers still get paid during an "exceptional" break, just not summer)
+async function isInSummerBreak(date = new Date()) {
+    const day = todayISO(date);
+
+    const activeBreak = await SchoolBreak.findOne({
+        where: {
+            type: "summer",
+            start_date: { [Op.lte]: day },
+            end_date: { [Op.gte]: day },
+        },
+    });
+
+    return activeBreak || null;
 }
 
 function periodString(date = new Date()) {
@@ -47,33 +54,13 @@ async function runGenerateMonthlyStaffSalariesJob() {
         throw err;
     }
 
-    let staffCreated = 0;
-    let staffSkipped = 0;
-
-    for (const { person_type, PersonModel } of STAFF_TYPES) {
-        const people = await PersonModel.findAll();
-
-        for (const person of people) {
-            const [, wasCreated] = await StaffSalary.findOrCreate({
-                where: { person_type, person_id: person.id, month, year },
-                defaults: {
-                    base_salary: parseFloat(person.salary || 0).toFixed(2),
-                    absence_days: 0,
-                    unjustified_absence_days: 0,
-                    status: "en attente",
-                },
-            });
-
-            if (wasCreated) staffCreated++;
-            else staffSkipped++;
-        }
-    }
-
     let teacherCreated = 0;
     let teacherSkipped = 0;
 
-    if (isSchoolMonth()) {
-        const teachers = await Teacher.findAll();
+    const activeSummerBreak = await isInSummerBreak();
+
+    if (!activeSummerBreak) {
+        const teachers = await Teacher.findAll({ where: { is_deleted: false } });
 
         for (const teacher of teachers) {
             // findOrCreate so this never clobbers a row real-time Scoring
@@ -83,7 +70,7 @@ async function runGenerateMonthlyStaffSalariesJob() {
                 defaults: {
                     hour_count: 0,
                     amount: 0,
-                    status: "en attente",
+                    status: "non payé",
                 },
             });
 
@@ -91,12 +78,11 @@ async function runGenerateMonthlyStaffSalariesJob() {
             else teacherSkipped++;
         }
     } else {
-        console.log(`[${JOB_NAME}] outside school year (Jul/Aug), skipping teacher rows for ${period}`);
+        console.log(`[${JOB_NAME}] inside summer break "${activeSummerBreak.label}", skipping teacher rows for ${period}`);
     }
 
     console.log(
-        `[${JOB_NAME}] staff: created ${staffCreated}, skipped ${staffSkipped} | ` +
-        `teachers: created ${teacherCreated}, skipped ${teacherSkipped} | period ${period}`
+        `[${JOB_NAME}] teachers: created ${teacherCreated}, skipped ${teacherSkipped} | period ${period}`
     );
 }
 
@@ -105,8 +91,8 @@ function startGenerateMonthlyStaffSalariesJob() {
         console.error(`[${JOB_NAME}] boot run failed:`, err);
     });
 
-    // 20th of every month, 00:05 — matches the 20th->20th billing cycle
-    cron.schedule("5 0 20 * *", () => {
+    // 1st of every month, 00:05 — matches the 1st->1st billing cycle
+    cron.schedule("5 0 1 * *", () => {
         runGenerateMonthlyStaffSalariesJob().catch(err => {
             console.error(`[${JOB_NAME}] scheduled run failed:`, err);
         });
@@ -119,4 +105,4 @@ module.exports = {
     hasRunThisMonth,
     periodString,
     JOB_NAME,
-};
+};  
