@@ -68,7 +68,7 @@ async function saveTeacherPayment({ teacher_id, month, year, hours, totalSalary 
         year,
         hour_count: hours.toFixed(2),
         amount: totalSalary.toFixed(2),
-        status: "non payé"
+        status: "en attente"
     });
 }
 

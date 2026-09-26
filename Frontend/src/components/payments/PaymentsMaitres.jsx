@@ -32,8 +32,14 @@ import { AxiosToken } from '../../api/Api';
 
 const STATUS_COLORS = {
   payé: { bg: 'positive.50', color: 'positive.600' },
-  "no payé": { bg: 'accent.50', color: 'accent.500' },
+  "non payé": { bg: 'accent.50', color: 'accent.500' },
   'en attente': { bg: 'warning.50', color: 'warning.500' },
+};
+
+const STATUS_LABELS = {
+  'payé': 'مدفوع',
+  'non payé': 'غير مدفوع',
+  'en attend': 'في الانتظار',
 };
 
 const ARABIC_MONTHS = [
@@ -84,7 +90,10 @@ export default function PaymentsMaitres() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await AxiosToken.get('/teacher-payment', { params: { month: now.getMonth() + 1, year: now.getFullYear() } });
+        // IMPORTANT : pas de filtre month/year ici — on charge TOUTES les paies
+        // pour que le select des mois reflète les vraies périodes existantes.
+        // Le filtrage par mois se fait côté client via monthFilter.
+        const response = await AxiosToken.get('/teacher-payment');
         setPayments(response.data.payments);
       } catch {
         toast({ title: 'خطأ أثناء تحميل المدفوعات', status: 'error', duration: 3000, isClosable: true });
@@ -113,7 +122,7 @@ export default function PaymentsMaitres() {
   const totalEncaisseCeMois = useMemo(
     () =>
       payments
-        .filter((p) => periodKey(p) === currentPeriodKey && p.status !== 'en attente') // <- period réelle
+        .filter((p) => periodKey(p) === currentPeriodKey && p.status !== 'en attend') // <- period réelle
         .reduce((sum, p) => sum + Number(p.amount), 0),
     [payments, currentPeriodKey]
   );
@@ -136,7 +145,7 @@ export default function PaymentsMaitres() {
     if (!payTarget) return;
     setIsPaying(true);
     try {
-      const response = await AxiosToken.patch(`/teacher-payments/${payTarget.id}/pay`);
+      const response = await AxiosToken.patch(`/teacher-payment/${payTarget.id}/pay`);
       setPayments((prev) => prev.map((p) => (p.id === payTarget.id ? response.data.payment : p)));
       toast({
         title: 'تم تأكيد الدفع',
@@ -164,29 +173,14 @@ export default function PaymentsMaitres() {
       key: 'status',
       label: 'الحالة',
       sortable: true,
-     render: (row) => {
-    const statusLabels = {
-        "payé": "مدفوع",
-        "no payé": "غير مدفوع",
-        "en attente": "قيد الانتظار",
-    };
-
-    const c = STATUS_COLORS[row.status] || {
-        bg: "ink.100",
-        color: "ink.700"
-    };
-
-    return (
-        <Badge
-            bg={c.bg}
-            color={c.color}
-            borderRadius="full"
-            px={2.5}
-        >
-            {statusLabels[row.status] || row.status}
-        </Badge>
-    );
-},
+      render: (row) => {
+        const c = STATUS_COLORS[row.status] || { bg: 'ink.100', color: 'ink.700' };
+        return (
+          <Badge bg={c.bg} color={c.color} borderRadius="full" px={2.5}>
+            {STATUS_LABELS[row.status] || row.status}
+          </Badge>
+        );
+      },
     },
   ];
 
@@ -253,7 +247,7 @@ export default function PaymentsMaitres() {
         >
           <option value="">جميع الحالات</option>
           {paymentStatuses.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
           ))}
         </Select>
 
@@ -280,7 +274,7 @@ export default function PaymentsMaitres() {
             <Tooltip label="الدفع" hasArrow>
               <IconButton
                 aria-label="الدفع"
-                disabled={row.status !== 'no payé'}
+                disabled={row.status !== 'non payé'}
                 icon={<Wallet size={16} />}
                 size="sm"
                 variant="ghost"
@@ -344,7 +338,7 @@ export default function PaymentsMaitres() {
                         <Text fontSize="sm" fontWeight="600" color="ink.800">{formatMonthLabel(periodKey(p))}</Text>
                         <Text fontSize="xs" color="ink.400">{Number(p.amount).toLocaleString('fr-FR')} د.ت — {formatDate(p.createdAt)}</Text>
                       </Box>
-                      <Badge bg={c.bg} color={c.color} borderRadius="full" px={2.5}>{p.status}</Badge>
+                      <Badge bg={c.bg} color={c.color} borderRadius="full" px={2.5}>{STATUS_LABELS[p.status] || p.status}</Badge>
                     </HStack>
                   );
                 })}

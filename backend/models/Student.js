@@ -28,9 +28,6 @@ const Student  = sequelize.define("students",{
     phone:{
         type:DataTypes.STRING,
     },   
-    class:{
-        type:DataTypes.STRING,
-    },
     stage:{
         type:DataTypes.STRING,
     },

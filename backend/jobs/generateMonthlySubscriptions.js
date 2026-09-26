@@ -10,17 +10,15 @@ const { Op } = require("sequelize");
 const JOB_NAME = "generate_monthly_subscriptions";
 
 function currentPeriod(date = new Date()) {
-    // billing cycle is 1st -> 1st, so the period is just the current month
     const year = date.getFullYear();
-    const month = date.getMonth(); // 0-indexed
+    const month = date.getMonth();
     return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
 function todayISO(date = new Date()) {
-    return date.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+    return date.toISOString().slice(0, 10);
 }
 
-// Is `date` inside any school_break row (summer or exceptional)?
 async function isInBreak(date = new Date()) {
     const day = todayISO(date);
 
@@ -39,11 +37,23 @@ async function hasRunThisMonth(period = currentPeriod()) {
     return !!log;
 }
 
-// Price is just label -> amount, keyed by the student's class label.
-function normalMonthPriceFromCache({ classe }, priceByClass) {
-    const price = priceByClass.get(classe);
+// Price/TuitionFee is keyed by STAGE ("ابتدائي" / "اعدادي" / "ثانوي" / "باكالوريا"),
+// not by the granular `level` string ("السنة الثانية ابتدائي", etc.).
+//
+// Bac-year students carry stage "ثانوي" but must be billed at the
+// "باكالوريا" rate instead — this override catches that case.
+function resolvePriceKey(student) {
+    if (student.level && student.level.includes("باك")) {
+        return "باكالوريا";
+    }
+    return student.stage;
+}
+
+function normalMonthPriceFromCache(student, priceByStage) {
+    const key = resolvePriceKey(student);
+    const price = priceByStage.get(key);
     if (!price) {
-        throw new Error(`no Price row for class "${classe}"`);
+        throw new Error(`no Price row for stage "${key}"`);
     }
 
     return parseFloat(price.amount);
@@ -58,7 +68,6 @@ async function runMonthlySubscriptionJob() {
         return;
     }
 
-    // Claim the period FIRST, atomically, before touching any student data.
     try {
         await JobLog.create({ job_name: JOB_NAME, period });
     } catch (err) {
@@ -69,7 +78,6 @@ async function runMonthlySubscriptionJob() {
         throw err;
     }
 
-    // Now safe — only one process can ever reach this point per period.
     const [students, allSubscriptions, prices] = await Promise.all([
         Student.findAll(),
         Subscription.findAll({ order: [["createdAt", "DESC"]] }),
@@ -83,7 +91,7 @@ async function runMonthlySubscriptionJob() {
         }
     }
 
-    const priceByClass = new Map(prices.map(p => [p.label, p]));
+    const priceByStage = new Map(prices.map(p => [p.label, p]));
 
     let created = 0;
     let skipped = 0;
@@ -96,13 +104,11 @@ async function runMonthlySubscriptionJob() {
             continue;
         }
 
-        // Offered students don't get a new subscription generated for them.
         if (lastSubscription.is_offer) {
             skipped++;
             continue;
         }
 
-        // Student's last subscription is inactive (left, paused, etc.) — don't auto-renew.
         if (!lastSubscription.is_active) {
             skipped++;
             continue;
@@ -110,12 +116,9 @@ async function runMonthlySubscriptionJob() {
 
         let normalMonthPrice;
         try {
-            normalMonthPrice = normalMonthPriceFromCache(
-                { classe: student.class },
-                priceByClass
-            );
+            normalMonthPrice = normalMonthPriceFromCache(student, priceByStage);
         } catch (err) {
-            console.error(`[${JOB_NAME}] pricing failed for student ${student.id} (${student.class}):`, err.message);
+            console.error(`[${JOB_NAME}] pricing failed for student ${student.id} (stage: ${student.stage}, level: ${student.level}):`, err.message);
             skipped++;
             continue;
         }
@@ -134,12 +137,10 @@ async function runMonthlySubscriptionJob() {
 }
 
 function startMonthlySubscriptionJob() {
-    // run once on boot, in case a scheduled run was missed during downtime
     runMonthlySubscriptionJob().catch(err => {
         console.error(`[${JOB_NAME}] boot run failed:`, err);
     });
 
-    // 1st of every month, 00:05 — matches the 1st->1st billing cycle
     cron.schedule("5 0 1 * *", () => {
         runMonthlySubscriptionJob().catch(err => {
             console.error(`[${JOB_NAME}] scheduled run failed:`, err);

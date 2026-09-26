@@ -151,6 +151,7 @@ const timeSlots = useMemo(() => generateTimeSlots(8, 18, 30), []);
                   value={values.date}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  max={new Date()}
                 />
                 <FormErrorMessage>{errors.date}</FormErrorMessage>
               </FormControl>

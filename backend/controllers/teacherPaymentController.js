@@ -64,7 +64,7 @@ async function confirmTeacherPayment(req, res) {
             return res.status(404).json({ message: "Paiement introuvable" });
         }
 
-        if (payment.status !== "no payé") {
+        if (payment.status !== "non payé") {
             return res.status(400).json({ message: "Ce paiement n'est pas encore payable (statut requis : no payé)." });
         }
 

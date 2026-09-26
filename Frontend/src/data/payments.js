@@ -5,7 +5,7 @@
 
 export const paymentTypes = ['Scolarité', 'Transport', 'Inscription', 'Autre'];
 export const paymentModes = ['Espèces', 'Carte bancaire', 'Virement', 'Chèque'];
-export const paymentStatuses = ['payé', 'Partiel', 'en attente'];
+export const paymentStatuses = ['payé', 'non payé', 'en attente'];
 
 export const payments = [
   { id: 1, eleve: 'Mohamed Ben Ali', niveau: 'Préscolaire', typePaiement: 'Scolarité', montant: 1200, datePaiement: '2026-08-03', modePaiement: 'Virement', statut: 'Payé' },
